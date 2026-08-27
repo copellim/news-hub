@@ -38,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-3xl grow px-4 py-6">
+        <main className="mx-auto w-full max-w-3xl grow px-4 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-6">
           {children}
         </main>
       </body>
