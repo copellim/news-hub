@@ -80,6 +80,12 @@ export async function updateBlobText(
   }
 }
 
+/**
+ * La lettura dall'origine è quella che precede una scrittura, quindi il suo
+ * ETag deve essere quello forte. Se la risposta arriva compressa (brotli, per
+ * un JSONL di qualche KB) l'ETag diventa debole, `W/"…"`, e `put` con `ifMatch`
+ * lo rifiuta sempre come "ETag mismatch": senza compressione resta forte.
+ */
 async function readBlob(
   pathname: string,
   options: { useCache: boolean },
@@ -87,6 +93,7 @@ async function readBlob(
   const result = await get(pathname, {
     access: "private",
     useCache: options.useCache,
+    headers: options.useCache ? undefined : { "accept-encoding": "identity" },
   });
   if (!result || result.statusCode !== 200) {
     return null;

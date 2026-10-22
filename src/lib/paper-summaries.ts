@@ -51,6 +51,9 @@ export function usePaperSummaries(
     }
 
     function setPending(batch: readonly string[], isPending: boolean) {
+      if (batch.length === 0) {
+        return;
+      }
       setPendingKeys((current) => {
         const next = new Set(current);
         batch.forEach((key) =>
@@ -66,10 +69,12 @@ export function usePaperSummaries(
           !knownSummaries.current.has(key) && !generationKeys.current.has(key),
       );
       missing.forEach((key) => generationKeys.current.add(key));
+      // Tutti in attesa da subito, non solo il lotto in corso: le Server Action
+      // girano una alla volta, e gli ultimi lotti partono dopo parecchi secondi.
+      setPending(missing, true);
 
       for (let start = 0; start < missing.length; start += GENERATION_BATCH_SIZE) {
         const batch = missing.slice(start, start + GENERATION_BATCH_SIZE);
-        setPending(batch, true);
         try {
           remember(await generatePaperSummaries(batch, selectedCategories));
         } catch (error) {

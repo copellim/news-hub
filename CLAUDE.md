@@ -167,7 +167,10 @@ forma dei dati richiede una `version: 2`, non una migrazione silenziosa.
   (`useCache: false`) e scrive con `ifMatch` sull'ETag; su
   `BlobPreconditionFailedError` riparte. La CDN può servire la versione vecchia
   per circa un minuto dopo una sovrascrittura, quindi chi riscrive non legge mai
-  dalla cache.
+  dalla cache. Quella lettura chiede `accept-encoding: identity`: se la CDN
+  comprime la risposta (brotli, già con un JSONL di 3 KB) l'ETag diventa debole,
+  `W/"…"`, e `put` lo rifiuta sempre con "ETag mismatch". `head()` e `list()`
+  danno l'ETag forte, `get()` compresso no (verificato).
 - **Snapshot stabile per identità.** `useSyncExternalStore` confronta gli
   snapshot con `===`: l'oggetto si sostituisce solo quando qualcosa cambia.
 - **I segnalibri salvano l'item intero**, non il solo id: un articolo resta
