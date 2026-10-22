@@ -2,15 +2,21 @@
 
 @AGENTS.md
 
-Aggregatore personale, solo locale. Tre pagine: **News** (Hacker News, Lobsters,
-r/programming), **Papers** (HF Daily Papers, arXiv filtrato) e **Da leggere**
-(coda salvata nel browser). Nessun database e nessuna auth: le pagine sono
-statiche con cache per fonte, lo stato dell'utente vive in localStorage.
+Aggregatore a uso personale, deployato su Vercel (piano Hobby). Tre pagine:
+**News** (Hacker News, Lobsters, r/programming), **Papers** (HF Daily Papers,
+arXiv filtrato, con un riassunto in italiano per paper) e **Da leggere** (coda
+di segnalibri). Login Google ristretto a un'allowlist di email; nessun
+database: le pagine sono statiche con cache per fonte, lo stato degli utenti e
+i riassunti stanno su Vercel Blob.
+
+Va tenuto semplice: lo usano una o due persone. Un solo servizio di storage
+(Blob), niente architetture pensate per un traffico che non c'è.
 
 ## Stack
 
 Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4,
-`fast-xml-parser` per l'RSS di arXiv. Package manager: pnpm.
+`fast-xml-parser` per l'RSS di arXiv, Better Auth (Google, stateless),
+`@vercel/blob`, `@anthropic-ai/sdk` (Claude Haiku 5.5). Package manager: pnpm.
 
 ## Caching — la regola portante
 
@@ -35,16 +41,34 @@ src/lib/feed.ts             # client-safe: tipo FeedItem, dedup, ordinamento
 src/lib/config.ts           # client-safe: filtro arXiv hardcoded, user-agent
 src/lib/sources/http.ts     # fetch con user-agent + timeout, SourceError
 src/lib/sources/<fonte>.ts  # un fetcher per fonte, `import "server-only"`
-src/lib/sources/index.ts    # getLane, Promise.allSettled
-src/lib/settings.ts         # unico store localStorage + import/export
+src/lib/sources/index.ts    # getLane, Promise.allSettled, getPaperTexts
+src/lib/settings-model.ts   # client-safe: forma dello stato, operazioni, validazione
+src/lib/settings.ts         # client: copia locale dello stato + salvataggi a lotti
+src/lib/user-settings.ts    # server: un file JSON per utente su Blob
+src/lib/blob-store.ts       # server: lettura e scrittura condizionale su Blob
+src/lib/auth.ts             # server: Better Auth, allowlist, getSignedInEmail
+src/lib/auth-client.ts      # client: authClient di Better Auth
+src/lib/summaries/          # server: JSONL dei riassunti + generazione con Haiku
+src/lib/paper-summaries.ts  # client: usePaperSummaries
+src/app/actions.ts          # Server Action: loadLane, riassunti
+src/app/api/auth/[...all]/  # route di Better Auth
+src/app/api/settings/       # GET/POST dello stato dell'utente loggato
 src/app/page.tsx            # corsia News
 src/app/papers/page.tsx     # corsia Papers
 src/app/da-leggere/page.tsx # coda di lettura
 ```
 
-Confine server/client: tutto ciò che sta in `sources/` è `server-only`. I tipi e
-le costanti che servono anche ai componenti stanno in `feed.ts` e `config.ts`,
-che non importano nulla di `node:*`.
+Confine server/client: `sources/`, `summaries/`, `auth.ts`, `blob-store.ts` e
+`user-settings.ts` sono `server-only`. I tipi e le costanti che servono anche ai
+componenti stanno in `feed.ts`, `config.ts` e `settings-model.ts`, che non
+importano nulla di `node:*`.
+
+## Variabili d'ambiente
+
+Vivono nel progetto Vercel `news-hub`, non a mano in `.env.local`: in locale si
+scaricano con `vercel env pull .env.local --environment development`, che
+riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
+(qualche ora): senza, Blob risponde 403. Elenco e significato in `.env.example`.
 
 ## Decisioni da non ribaltare senza motivo
 
@@ -87,8 +111,8 @@ Unica fonte che richiede credenziali. Anonimo non è utilizzabile da un server:
 `www.reddit.com/r/programming.json` risponde **403** anche con user-agent
 custom, e il feed RSS passa a **429** già alla seconda richiesta. Serve un'app
 registrata su <https://www.reddit.com/prefs/apps> (tipo *script*) e OAuth
-`client_credentials` verso `oauth.reddit.com`. Variabili in `.env.local`, vedi
-`.env.example`. Senza credenziali la corsia resta vuota e la pagina lo dice.
+`client_credentials` verso `oauth.reddit.com`. Variabili nel progetto Vercel,
+vedi `.env.example`. Senza credenziali la corsia resta vuota e la pagina lo dice.
 
 ## Non ancora fatto (deciso, rimandato)
 
@@ -99,39 +123,91 @@ registrata su <https://www.reddit.com/prefs/apps> (tipo *script*) e OAuth
   velocità: ~1-2 item a settimana, annegherebbero se mescolati ad arXiv.
   Attenzione: il feed Nature è RSS 1.0/RDF, non RSS 2.0.
 
-## Stato nel browser: un oggetto solo
+## Login
 
-Una chiave versionata, `news-hub:settings:v1`, letta con `useSyncExternalStore`:
+Better Auth con il solo provider Google e **nessun database**: senza `database`
+passa da sé alla modalità stateless, sessione in un cookie cifrato di 7 giorni.
+Una sessione singola non si revoca; cambiare `BETTER_AUTH_SECRET` le chiude
+tutte.
+
+- **Allowlist in `ALLOWED_EMAILS`**, controllata due volte: nell'hook
+  `databaseHooks.user.create.before` (l'adapter in memoria ricrea l'utente a
+  ogni login, quindi l'hook vede gli accessi) e in `getSignedInEmail`, che è
+  l'unica porta per Server Action e route. L'utente viene sempre dalla
+  sessione, mai dal corpo della richiesta.
+- **Le pagine restano statiche**: la sessione si legge solo nel client
+  (`authClient.useSession`) e nelle route/Server Action, mai nel render.
+- Chi non ha fatto l'accesso legge News e Papers con i riassunti già pronti, ma
+  senza stelle, letti né generazione di riassunti nuovi.
+
+## Stato dell'utente: un file per utente su Blob
+
+`users/<sha256 dell'email>/settings.json` sullo store privato `news-hub-blob`,
+con la forma:
 
 ```jsonc
 { "version": 1, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
 ```
 
-`src/lib/settings.ts` è l'unico posto che tocca localStorage. Espone `useSettings`
-più tre viste di dominio (`useBookmarks`, `useVisitedItems`, `useArxivCategories`)
-che scrivono tutte sullo stesso oggetto. Cambiare la forma dei dati richiede un
-`:v2`, non una migrazione silenziosa.
+`src/lib/settings.ts` è l'unico posto che parla con `/api/settings`. Espone tre
+viste di dominio (`useBookmarks`, `useVisitedItems`, `useArxivCategories`) più
+`useSettingsStatus` (`loading` / `signedOut` / `ready` / `error`). Cambiare la
+forma dei dati richiede una `version: 2`, non una migrazione silenziosa.
 
+- **Il client manda operazioni, non l'oggetto** (`SettingsOperation` in
+  `settings-model.ts`): il server le applica all'ultima versione del file. Con
+  l'oggetto intero, una scheda con una copia vecchia cancellerebbe quello che
+  un'altra ha appena salvato. Client e server usano lo stesso `applyOperations`.
+- **Salvataggi a lotti**: la pagina si aggiorna subito, le operazioni partono
+  3 s dopo l'ultima e quando la scheda si nasconde (`fetch` con `keepalive`, per
+  questo è una route e non una Server Action). Ogni salvataggio è un `put`, e
+  il piano Hobby di Blob ne concede 2.000 al mese: superati, lo store resta
+  bloccato 30 giorni.
+- **Scrittura condizionale**: `updateBlobText` rilegge dall'origine
+  (`useCache: false`) e scrive con `ifMatch` sull'ETag; su
+  `BlobPreconditionFailedError` riparte. La CDN può servire la versione vecchia
+  per circa un minuto dopo una sovrascrittura, quindi chi riscrive non legge mai
+  dalla cache.
 - **Snapshot stabile per identità.** `useSyncExternalStore` confronta gli
-  snapshot con `===`: senza la cache su `cachedRaw`/`cachedSettings` ogni parse
-  creerebbe un oggetto nuovo e React entrerebbe in loop di render.
-- **L'evento `storage` non scatta nella scheda che ha scritto**, quindi ogni
-  scrittura emette anche `news-hub:settings-changed`. Senza, la stella cliccata
-  non aggiornerebbe il contatore nella navigazione.
+  snapshot con `===`: l'oggetto si sostituisce solo quando qualcosa cambia.
 - **I segnalibri salvano l'item intero**, non il solo id: un articolo resta
   leggibile anche quando è uscito dalla front page.
-- **I letti hanno un tetto** (`MAX_VISITED`, 2000): la lista cresce a ogni click
-  e senza limite finirebbe per riempire la quota.
-- **`normalizeSettings` scarta le voci non valide, non l'intero file**: un
-  backup leggermente sporco non deve azzerare le impostazioni di chi lo importa.
-  Le categorie sconosciute cadono perché il catalogo è la whitelist.
-- **Export JSON, import che sovrascrive.** È un ripristino dell'oggetto intero,
-  non una fusione. I due pulsanti stanno nell'header accanto alle tab, quindi
-  funzionano da qualunque pagina. La revoca dell'object URL va differita: revocarla nello
-  stesso tick del `click()` annulla il download prima che Chromium legga il blob.
-- **`migrateLegacyKeys`** recupera una tantum le tre chiavi separate della
-  versione precedente (`reading-queue`, `arxiv-categories`, `visited`). Si può
-  togliere quando non servirà più.
+- **I letti hanno un tetto** (`MAX_VISITED`, 2000): il file si riscrive intero
+  a ogni salvataggio.
+- **`normalizeSettings` scarta le voci non valide, non l'intero file**. Un file
+  del tutto illeggibile invece è un errore e non viene trattato come vuoto,
+  altrimenti il salvataggio successivo lo azzererebbe.
+- **Recupero dal localStorage**: al primo caricamento con accesso, quello che la
+  versione precedente teneva in `news-hub:settings:v1` si unisce all'account
+  (`mergeLocal`: unione di segnalibri e letti) e la chiave si cancella. Si può
+  togliere quando non servirà più. Non c'è più export/import: il backup è il
+  file su Blob, scaricabile dalla dashboard Vercel.
+
+## Riassunti dei paper
+
+Un riassunto in italiano sotto ogni paper **visibile** della corsia Papers.
+Tutti gli utenti condividono lo stesso file: `summaries.jsonl` su Blob, una riga
+per paper (`key`, `text`, `origin`, `model`, `promptVersion`, `createdAt`).
+
+- **Fonte del testo**: per HF si traduce l'`ai_summary` che l'API di HF fornisce
+  già; per arXiv, o se HF non l'ha, si riassume l'abstract (il campo
+  `description` dell'RSS). Abstract e `ai_summary` restano sul server: i fetcher
+  li tengono nella stessa voce di cache dell'item, ma alla pagina arriva solo
+  l'item.
+- **Whitelist**: le Server Action ricevono solo chiavi, e `getPaperTexts` cerca
+  i testi nei feed in cache. Una chiave che non compare nei feed non produce
+  nulla, quindi nessuno può far riassumere un testo arbitrario.
+- **Leggere è aperto a tutti, generare no**: `generatePaperSummaries` richiede
+  l'accesso, perché ogni riassunto è una chiamata a pagamento (Haiku 5.5,
+  ragionamento esteso spento, ~$0,0001 a paper).
+- **A lotti di 8, uno dopo l'altro** (`usePaperSummaries`): i primi compaiono in
+  pochi secondi e un solo lotto alla volta riscrive il file. Prima di generare
+  si rilegge il file dall'origine, così un riassunto appena salvato da un'altra
+  scheda non si paga due volte.
+- **Potatura a 30 giorni**: un paper più vecchio non torna nei feed. Il file
+  resta intorno ai 2 MB e si scarica intero a ogni lettura.
+- **`SUMMARY_PROMPT_VERSION`**: alzarlo fa rigenerare tutto al caricamento
+  successivo. Un rifiuto o un testo tagliato non si salvano.
 
 ## Filtro categorie della corsia Papers
 
@@ -141,11 +217,11 @@ interessano l'app — Computer Science, Statistics, EESS: 50 categorie prese da
 client e finisce in un URL, quindi è validato sia nella Server Action sia in
 `getArxivItems`. Aggiungere math/physics = aggiungere righe al catalogo.
 
-`getCategoryItems` cacha **una voce per categoria**: cambiare selezione riusa i
+`getCategoryEntries` cacha **una voce per categoria**: cambiare selezione riusa i
 feed già scaricati invece di rifare le richieste.
 
 **Non c'è un pulsante di refresh: ogni modifica applica da sola.** Il render del
-server non conosce il localStorage e usa sempre i default, quindi il `FeedBoard`
+server non sa chi è l'utente e usa sempre i default, quindi il `FeedBoard`
 confronta la selezione persistita con quella con cui i dati mostrati sono stati
 costruiti (`loadedSelection`) e, se differiscono, chiama `loadLane` — all'
 apertura e a ogni chip cliccato.

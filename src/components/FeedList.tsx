@@ -19,15 +19,24 @@ const SOURCE_ACCENTS: Record<FeedItem["source"], string> = {
   arxiv: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
 };
 
+const NO_SUMMARIES: ReadonlyMap<string, string> = new Map();
+const NO_PENDING_KEYS: ReadonlySet<string> = new Set();
+
 export function FeedList({
   lane,
   emptyLabel,
   rowAction,
+  summaries = NO_SUMMARIES,
+  pendingSummaryKeys = NO_PENDING_KEYS,
 }: {
   lane: Lane;
   emptyLabel: string;
   /** Azione extra in fondo alla riga, es. "Letto" nella coda. */
   rowAction?: (item: FeedItem) => ReactNode;
+  /** Riassunto in italiano per chiave, solo nella corsia Papers. */
+  summaries?: ReadonlyMap<string, string>;
+  /** Paper il cui riassunto si sta generando adesso. */
+  pendingSummaryKeys?: ReadonlySet<string>;
 }) {
   // Un solo abbonamento allo store per lista, non uno per riga.
   const { visitedKeys, markVisited } = useVisitedItems();
@@ -56,6 +65,8 @@ export function FeedList({
               isVisited={visitedKeys.has(item.key)}
               onVisit={markVisited}
               action={rowAction?.(item)}
+              summary={summaries.get(item.key) ?? null}
+              isSummaryPending={pendingSummaryKeys.has(item.key)}
             />
           ))}
         </ol>
@@ -70,12 +81,16 @@ function FeedRow({
   isVisited,
   onVisit,
   action,
+  summary,
+  isSummaryPending,
 }: {
   item: FeedItem;
   position: number;
   isVisited: boolean;
   onVisit: (key: string) => void;
   action: ReactNode;
+  summary: string | null;
+  isSummaryPending: boolean;
 }) {
   const host = hostnameOf(item.url);
   return (
@@ -98,6 +113,13 @@ function FeedRow({
         >
           {item.title}
         </a>
+        {summary ? (
+          <p className="text-sm leading-relaxed opacity-80">{summary}</p>
+        ) : (
+          isSummaryPending && (
+            <p className="text-xs opacity-50">riassunto in arrivo…</p>
+          )
+        )}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs opacity-70">
           <span
             className={`rounded px-1.5 py-0.5 font-medium ${SOURCE_ACCENTS[item.source]}`}

@@ -1,23 +1,31 @@
 # news-hub
 
 Aggregatore personale di news e paper. Cinque fonti, due corsie e una lista di
-segnalibri, in un'app Next.js senza database e senza login: gira in locale e
-tiene le sue preferenze nel browser.
+segnalibri, in un'app Next.js senza database, deployata su Vercel. Il login è
+con Google, riservato a poche email; segnalibri, letti e riassunti stanno su
+Vercel Blob.
 
 | Pagina | Cosa mostra |
 |---|---|
 | **News** | Hacker News, Lobsters, r/programming |
-| **Papers** | Hugging Face Daily Papers, arXiv |
+| **Papers** | Hugging Face Daily Papers, arXiv, con un riassunto in italiano per paper |
 | **Da leggere** | Gli articoli messi da parte con la stella |
 
 ## Avvio
 
-Servono Node 20.9+ (lo richiede Next 16) e pnpm.
+Servono Node 20.9+ (lo richiede Next 16), pnpm e la CLI di Vercel collegata al
+progetto (`vercel link`). Le variabili d'ambiente vivono sul progetto Vercel e
+si scaricano in `.env.local`:
 
 ```bash
 pnpm install
+vercel env pull .env.local --environment development
 pnpm dev
 ```
+
+Il pull riscrive `.env.local` per intero e va rifatto quando scade il token
+OIDC di Blob (qualche ora): il sintomo è un 403 da Blob. Elenco delle variabili
+in `.env.example`.
 
 L'app è su <http://localhost:3000>. Gli altri script sono `pnpm build`,
 `pnpm start`, `pnpm lint`, `pnpm typecheck`.
@@ -30,12 +38,7 @@ richieste anonime non passano — `www.reddit.com/r/programming.json` risponde
 seconda richiesta.
 
 Serve un'app registrata su <https://www.reddit.com/prefs/apps> di tipo *script*,
-poi in `.env.local`:
-
-```bash
-REDDIT_CLIENT_ID=...
-REDDIT_CLIENT_SECRET=...
-```
+con `REDDIT_CLIENT_ID` e `REDDIT_CLIENT_SECRET` nel progetto Vercel.
 
 Conviene anche aggiungere il proprio username all'`USER_AGENT` in
 `src/lib/config.ts`: Reddit raccomanda il formato
@@ -68,19 +71,29 @@ letto, e il filtro `Tutti / Non letti / Letti` lavora su quello. La stella lo
 mette da parte salvando l'item intero, non il solo id: resta leggibile anche
 quando è uscito dalla front page.
 
-## Impostazioni
+**Riassunti.** Sotto ogni paper visibile compare un riassunto in italiano: per
+Hugging Face è la traduzione della frase che HF fornisce già, per arXiv è un
+riassunto dell'abstract. Li genera Claude Haiku 5.5, solo per chi ha fatto
+l'accesso, e si salvano in un unico `summaries.jsonl` su Blob, così non si
+rielaborano a ogni apertura.
 
-Categorie arXiv, segnalibri e articoli letti stanno in **un solo oggetto JSON**
-in `localStorage`, sotto `news-hub:settings:v1`:
+## Account e impostazioni
+
+Senza accesso si leggono News e Papers con i riassunti già pronti. Con
+l'accesso Google, se l'email è in `ALLOWED_EMAILS`, compaiono stelle e letti e
+si generano i riassunti mancanti.
+
+Categorie arXiv, segnalibri e articoli letti stanno in **un file JSON per
+utente** su Blob:
 
 ```jsonc
 { "version": 1, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
 ```
 
-I pulsanti **Esporta** e **Importa** nell'header lo scaricano e lo ripristinano
-per intero. L'import sovrascrive: è un ripristino, non una fusione. È anche
-l'unico modo di portare i segnalibri su un altro browser, visto che
-`localStorage` non lascia il computer.
+Le modifiche si vedono subito e si salvano a lotti qualche secondo dopo. Quello
+che una versione precedente teneva nel `localStorage` si unisce all'account al
+primo accesso da quel browser. Il backup è il file stesso, scaricabile dalla
+dashboard Vercel.
 
 Le categorie arXiv selezionabili sono le 50 di `cs`, `stat` ed `eess`, prese da
 <https://arxiv.org/category_taxonomy>. Aggiungere math o physics significa
@@ -92,9 +105,11 @@ altro. La selezione si applica da sola, all'apertura e a ogni modifica.
 ```
 src/lib/feed.ts             tipo FeedItem, dedup, ordinamento, filtri
 src/lib/config.ts           catalogo categorie arXiv, tetti, user-agent
-src/lib/settings.ts         unico store localStorage + import/export
+src/lib/settings*.ts        stato dell'utente: modello condiviso e copia nel client
+src/lib/auth.ts             login Google con Better Auth, allowlist
+src/lib/summaries/          riassunti: file su Blob e generazione con Haiku
 src/lib/sources/            un fetcher per fonte, tutti server-only
-src/app/                    le tre pagine e la Server Action
+src/app/                    le tre pagine, le Server Action e le route API
 ```
 
 Note di architettura e decisioni prese: `CLAUDE.md`.

@@ -35,11 +35,20 @@ const parser = new XMLParser({
 });
 
 /**
+ * L'item per la pagina più l'abstract per i riassunti. L'abstract resta sul
+ * server: mandarlo al client per decine di paper appesantirebbe la pagina.
+ */
+type ArxivEntry = {
+  item: FeedItem;
+  abstract: string;
+};
+
+/**
  * Cache **per categoria**: la chiave è la sola categoria, così cambiare
  * selezione riusa i feed già scaricati invece di rifare le richieste. I feed
  * cambiano una volta al giorno.
  */
-async function getCategoryItems(category: string): Promise<FeedItem[]> {
+async function getCategoryEntries(category: string): Promise<ArxivEntry[]> {
   "use cache";
   cacheLife("days");
 
@@ -49,16 +58,37 @@ async function getCategoryItems(category: string): Promise<FeedItem[]> {
 export async function getArxivItems(
   categories: readonly string[],
 ): Promise<FeedItem[]> {
+  const entries = await getArxivEntries(categories);
+  // Le categorie si sovrappongono: lo stesso paper esce su cs.AI e cs.LG.
+  return dedupeByKey(entries.map((entry) => entry.item)).slice(
+    0,
+    SOURCE_FETCH_LIMIT,
+  );
+}
+
+/** Titolo e abstract per chiave, dagli stessi feed in cache che riempiono la pagina. */
+export async function getArxivTexts(
+  categories: readonly string[],
+): Promise<Map<string, { title: string; abstract: string }>> {
+  const entries = await getArxivEntries(categories);
+  return new Map(
+    entries.map(({ item, abstract }) => [
+      item.key,
+      { title: item.title, abstract },
+    ]),
+  );
+}
+
+async function getArxivEntries(
+  categories: readonly string[],
+): Promise<ArxivEntry[]> {
   // Seconda barriera oltre a quella della Server Action: la categoria finisce
   // in un URL, e questa funzione è raggiungibile anche da altri chiamanti.
   const allowed = categories.filter(isKnownArxivCategory);
-  const perCategory = await Promise.all(allowed.map(getCategoryItems));
-
-  // Le categorie si sovrappongono: lo stesso paper esce su cs.AI e cs.LG.
-  return dedupeByKey(perCategory.flat()).slice(0, SOURCE_FETCH_LIMIT);
+  return (await Promise.all(allowed.map(getCategoryEntries))).flat();
 }
 
-async function fetchCategory(category: string): Promise<FeedItem[]> {
+async function fetchCategory(category: string): Promise<ArxivEntry[]> {
   const xml = await fetchText("arxiv", `${FEED_BASE_URL}${category}`);
   const parsed = parser.parse(xml) as {
     rss?: { channel?: { item?: RssItem[] } };
@@ -67,7 +97,23 @@ async function fetchCategory(category: string): Promise<FeedItem[]> {
 
   return items
     .filter((item) => ANNOUNCED_TYPES.has(item["arxiv:announce_type"] ?? "new"))
-    .map(toFeedItem);
+    .map((item) => ({
+      item: toFeedItem(item),
+      abstract: abstractOf(item.description),
+    }));
+}
+
+/**
+ * La `description` del feed comincia con un'intestazione
+ * (`arXiv:2610.28637v1 Announce Type: new Abstract: …`): resta solo il testo.
+ */
+function abstractOf(description: string): string {
+  const marker = "Abstract:";
+  const start = description.indexOf(marker);
+  return (start === -1
+    ? description
+    : description.slice(start + marker.length)
+  ).trim();
 }
 
 function toFeedItem(item: RssItem): FeedItem {

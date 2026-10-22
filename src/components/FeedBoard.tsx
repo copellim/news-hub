@@ -5,7 +5,13 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { loadLane } from "@/app/actions";
 import { ArxivCategoryFilter } from "@/components/ArxivCategoryFilter";
 import { FeedList } from "@/components/FeedList";
-import { useArxivCategories, useVisitedItems } from "@/lib/settings";
+import { usePaperSummaries } from "@/lib/paper-summaries";
+import {
+  useArxivCategories,
+  useSettingsStatus,
+  useVisitedItems,
+} from "@/lib/settings";
+import { selectionKeyOf } from "@/lib/settings-model";
 import {
   DEFAULT_ARXIV_CATEGORIES,
   DEFAULT_ITEMS_PER_SOURCE,
@@ -33,11 +39,6 @@ const READ_FILTER_LABELS: Record<ReadFilter, string> = {
   read: "Letti",
 };
 
-/** Confronto per insieme: riordinare i chip non deve rifare il caricamento. */
-function selectionKeyOf(categories: readonly string[]): string {
-  return [...categories].sort().join(",");
-}
-
 export function FeedBoard({
   lane,
   laneId,
@@ -52,6 +53,7 @@ export function FeedBoard({
   const [perSource, setPerSource] = useState<number>(DEFAULT_ITEMS_PER_SOURCE);
   const { categories, toggleCategory } = useArxivCategories();
   const { visitedKeys } = useVisitedItems();
+  const settingsStatus = useSettingsStatus();
 
   const [loaded, setLoaded] = useState<Lane | null>(null);
   const [isBusy, startWork] = useTransition();
@@ -59,8 +61,8 @@ export function FeedBoard({
   // Il filtro compare dove serve davvero: nella corsia che contiene arXiv.
   const hasCategoryFilter = LANE_SOURCES[laneId].includes("arxiv");
 
-  // Il render del server usa sempre le categorie di default: non conosce il
-  // localStorage. Questa è la selezione con cui i dati mostrati sono stati
+  // Il render del server usa sempre le categorie di default: non sa chi è
+  // l'utente. Questa è la selezione con cui i dati mostrati sono stati
   // costruiti, e serve a capire quando vanno ricaricati.
   const [loadedSelection, setLoadedSelection] = useState(() =>
     selectionKeyOf(DEFAULT_ARXIV_CATEGORIES),
@@ -107,6 +109,19 @@ export function FeedBoard({
       ),
     }),
     [activeLane, perSource, readFilter, sortMode, visitedKeys],
+  );
+
+  // Solo i paper visibili: riassumere quelli tagliati dalla pagina costerebbe
+  // senza che nessuno li legga. Generare è riservato a chi ha fatto l'accesso.
+  const paperKeys = useMemo(
+    () =>
+      laneId === "papers" ? visible.items.map((item) => item.key) : [],
+    [laneId, visible.items],
+  );
+  const { summaries, pendingKeys } = usePaperSummaries(
+    paperKeys,
+    categories,
+    settingsStatus === "ready",
   );
 
   return (
@@ -180,7 +195,12 @@ export function FeedBoard({
         </span>
       </div>
 
-      <FeedList lane={visible} emptyLabel={emptyLabel} />
+      <FeedList
+        lane={visible}
+        emptyLabel={emptyLabel}
+        summaries={summaries}
+        pendingSummaryKeys={pendingKeys}
+      />
     </div>
   );
 }

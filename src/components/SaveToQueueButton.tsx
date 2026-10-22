@@ -1,11 +1,23 @@
 "use client";
 
 import type { FeedItem } from "@/lib/feed";
-import { useBookmarks } from "@/lib/settings";
+import { useBookmarks, useSettingsStatus } from "@/lib/settings";
+
+/** Larghezza dell'icona: il posto resta riservato mentre lo stato arriva. */
+const STAR_SIZE = 18;
 
 export function SaveToQueueButton({ item }: { item: FeedItem }) {
   const { bookmarkedKeys, toggleBookmark } = useBookmarks();
+  const status = useSettingsStatus();
   const isSaved = bookmarkedKeys.has(item.key);
+
+  // I segnalibri stanno nell'account: senza accesso non c'è dove salvarli.
+  if (status === "signedOut" || status === "error") {
+    return null;
+  }
+  if (status === "loading") {
+    return <span aria-hidden className="shrink-0" style={{ width: STAR_SIZE }} />;
+  }
 
   return (
     <button
@@ -33,8 +45,8 @@ function StarIcon({ filled }: { filled: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="18"
-      height="18"
+      width={STAR_SIZE}
+      height={STAR_SIZE}
       fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"

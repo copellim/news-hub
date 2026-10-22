@@ -9,9 +9,13 @@ import {
   type LaneId,
   type SourceId,
 } from "@/lib/feed";
-import { getArxivItems } from "./arxiv";
+import { getArxivItems, getArxivTexts } from "./arxiv";
 import { getHackerNewsItems } from "./hackernews";
-import { getHuggingFaceItems } from "./huggingface";
+import {
+  getHuggingFaceItems,
+  getHuggingFaceTexts,
+  type HuggingFaceTexts,
+} from "./huggingface";
 import { getLobstersItems } from "./lobsters";
 import { getRedditItems } from "./reddit";
 
@@ -72,6 +76,54 @@ export async function getLane(
   });
 
   return { items: dedupeByKey(items), failures };
+}
+
+/** Quello che serve per riassumere un paper. */
+export type PaperText = {
+  key: string;
+  title: string;
+  abstract: string | null;
+  /** Il riassunto di una frase che HF fornisce già, in inglese. */
+  huggingFaceSummary: string | null;
+};
+
+/**
+ * I testi dei paper richiesti, presi dai feed in cache e mai dal client: è la
+ * whitelist dei riassunti. Una chiave che non compare nei feed non produce
+ * nulla, quindi nessuno può far riassumere (e pagare) un testo arbitrario.
+ * Se lo stesso paper è su HF e su arXiv vince HF, che ha anche il suo riassunto.
+ */
+export async function getPaperTexts(
+  keys: readonly string[],
+  arxivCategories: readonly string[],
+): Promise<PaperText[]> {
+  // Una fonte giù toglie solo i suoi riassunti: l'errore la pagina lo mostra già.
+  const [huggingFace, arxiv] = await Promise.all([
+    getHuggingFaceTexts().catch(
+      () => new Map<string, HuggingFaceTexts>(),
+    ),
+    getArxivTexts(arxivCategories).catch(
+      () => new Map<string, { title: string; abstract: string }>(),
+    ),
+  ]);
+
+  return keys.flatMap((key) => {
+    const fromHuggingFace = huggingFace.get(key);
+    if (fromHuggingFace) {
+      return [
+        {
+          key,
+          title: fromHuggingFace.title,
+          abstract: fromHuggingFace.abstract,
+          huggingFaceSummary: fromHuggingFace.aiSummary,
+        },
+      ];
+    }
+    const fromArxiv = arxiv.get(key);
+    return fromArxiv
+      ? [{ key, ...fromArxiv, huggingFaceSummary: null }]
+      : [];
+  });
 }
 
 function messageOf(reason: unknown): string {

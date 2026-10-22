@@ -22,11 +22,24 @@ type DailyPaper = {
     authors: Array<{ name: string }> | null;
     githubRepo: string | null;
     ai_keywords: string[] | null;
+    /** L'abstract del paper. */
+    summary: string | null;
+    /** Riassunto di una frase, in inglese, generato da HF. */
+    ai_summary: string | null;
   };
   numComments: number | null;
 };
 
-export async function getHuggingFaceItems(): Promise<FeedItem[]> {
+/** Testi per i riassunti: restano sul server, la pagina riceve solo l'item. */
+export type HuggingFaceTexts = {
+  title: string;
+  abstract: string | null;
+  aiSummary: string | null;
+};
+
+type HuggingFaceEntry = Omit<HuggingFaceTexts, "title"> & { item: FeedItem };
+
+async function getHuggingFaceEntries(): Promise<HuggingFaceEntry[]> {
   "use cache";
   // La selezione cambia una volta al giorno, non ha senso ripescarla ogni minuto.
   cacheLife("hours");
@@ -35,7 +48,27 @@ export async function getHuggingFaceItems(): Promise<FeedItem[]> {
     "huggingface",
     DAILY_PAPERS_URL,
   );
-  return papers.slice(0, SOURCE_FETCH_LIMIT).map(toFeedItem);
+  return papers.slice(0, SOURCE_FETCH_LIMIT).map((entry) => ({
+    item: toFeedItem(entry),
+    abstract: entry.paper.summary?.trim() || null,
+    aiSummary: entry.paper.ai_summary?.trim() || null,
+  }));
+}
+
+export async function getHuggingFaceItems(): Promise<FeedItem[]> {
+  return (await getHuggingFaceEntries()).map((entry) => entry.item);
+}
+
+export async function getHuggingFaceTexts(): Promise<
+  Map<string, HuggingFaceTexts>
+> {
+  const entries = await getHuggingFaceEntries();
+  return new Map(
+    entries.map(({ item, abstract, aiSummary }) => [
+      item.key,
+      { title: item.title, abstract, aiSummary },
+    ]),
+  );
 }
 
 function toFeedItem(entry: DailyPaper): FeedItem {

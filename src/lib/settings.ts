@@ -2,75 +2,72 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
-import { DEFAULT_ARXIV_CATEGORIES, isKnownArxivCategory } from "@/lib/config";
 import type { FeedItem } from "@/lib/feed";
-
-const STORAGE_KEY = "news-hub:settings:v1";
-
-/** `storage` non scatta nella scheda che ha scritto: serve un evento nostro. */
-const CHANGED_EVENT = "news-hub:settings-changed";
-
-/** Chiavi della versione precedente, una per dominio. Vedi `migrateLegacyKeys`. */
-const LEGACY_KEYS = {
-  bookmarks: "news-hub:reading-queue:v1",
-  categories: "news-hub:arxiv-categories:v1",
-  visited: "news-hub:visited:v1",
-} as const;
+import {
+  applyOperations,
+  DEFAULT_SETTINGS,
+  normalizeSettings,
+  type Settings,
+  type SettingsOperation,
+} from "@/lib/settings-model";
 
 /**
- * Un articolo messo da parte. Si salva l'item intero e non il solo id: resta
- * leggibile anche quando è uscito dalla front page e le fonti non lo danno più.
+ * Stato dell'utente nel browser: una copia di quello che sta su Blob, più le
+ * modifiche non ancora salvate. Ogni click aggiorna subito la pagina; le
+ * modifiche partono insieme qualche secondo dopo l'ultima, perché ogni
+ * salvataggio riscrive il file e il piano Hobby di Blob ha 2.000 scritture al
+ * mese, oltre le quali lo store resta bloccato per 30 giorni.
  */
-export type Bookmark = FeedItem & {
-  /** ISO. Ordina la lista e sopravvive all'export. */
-  savedAt: string;
+
+const SETTINGS_ENDPOINT = "/api/settings";
+
+/** Attesa dopo l'ultima modifica prima di salvare: raccoglie i click di fila. */
+const FLUSH_DELAY_MS = 3_000;
+
+/** Dopo un salvataggio fallito si riprova con calma, senza martellare. */
+const RETRY_DELAY_MS = 15_000;
+
+/** Limite del browser per `fetch` con `keepalive`, con un po' di margine. */
+const MAX_KEEPALIVE_BYTES = 60_000;
+
+/** Chiave della versione che teneva tutto nel localStorage. */
+const LEGACY_STORAGE_KEY = "news-hub:settings:v1";
+
+export type SettingsStatus = "loading" | "signedOut" | "ready" | "error";
+
+type SettingsSnapshot = {
+  status: SettingsStatus;
+  settings: Settings;
 };
 
-/** Tutto ciò che l'app tiene nel browser, in un oggetto solo. */
-export type Settings = {
-  version: 1;
-  arxivCategories: string[];
-  bookmarks: Bookmark[];
-  /** Chiavi degli articoli aperti almeno una volta. */
-  visited: string[];
+/** Il server non sa chi è l'utente: renderizza come se lo stato stesse arrivando. */
+const LOADING_SNAPSHOT: SettingsSnapshot = {
+  status: "loading",
+  settings: DEFAULT_SETTINGS,
 };
 
 /**
- * Tetto ai visitati: la lista cresce a ogni click e senza limite finirebbe per
- * riempire la quota di localStorage. Si scartano i più vecchi.
+ * `useSyncExternalStore` confronta gli snapshot per identità: l'oggetto si
+ * sostituisce solo quando qualcosa cambia davvero.
  */
-const MAX_VISITED = 2000;
+let snapshot: SettingsSnapshot = LOADING_SNAPSHOT;
+/** Ultima versione confermata dal server. */
+let confirmed: Settings = DEFAULT_SETTINGS;
+/** Modifiche già visibili in pagina ma non ancora salvate. */
+let pending: SettingsOperation[] = [];
+let isFlushing = false;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let hasStartedLoading = false;
+const listeners = new Set<() => void>();
 
-export const DEFAULT_SETTINGS: Settings = {
-  version: 1,
-  arxivCategories: [...DEFAULT_ARXIV_CATEGORIES],
-  bookmarks: [],
-  visited: [],
-};
+// --- Hook ------------------------------------------------------------------
 
-/**
- * `useSyncExternalStore` confronta gli snapshot per identità: senza questa
- * cache ogni parse creerebbe un oggetto nuovo e React andrebbe in loop.
- */
-let cachedRaw: string | null = null;
-let cachedSettings: Settings = DEFAULT_SETTINGS;
-
-export function useSettings() {
-  const settings = useSyncExternalStore(subscribe, readSettings, readDefaults);
-
-  const update = useCallback((patch: Partial<Settings>) => {
-    writeSettings({ ...readSettings(), ...patch });
-  }, []);
-
-  const replace = useCallback((next: Settings) => {
-    writeSettings(next);
-  }, []);
-
-  return { settings, update, replace };
+export function useSettingsStatus(): SettingsStatus {
+  return useSnapshot().status;
 }
 
 export function useBookmarks() {
-  const { settings, update } = useSettings();
+  const { settings } = useSnapshot();
   const bookmarks = settings.bookmarks;
 
   const bookmarkedKeys = useMemo(
@@ -79,234 +76,250 @@ export function useBookmarks() {
   );
 
   const toggleBookmark = useCallback((item: FeedItem) => {
-    const current = readSettings().bookmarks;
-    const isSaved = current.some((bookmark) => bookmark.key === item.key);
-    writeSettings({
-      ...readSettings(),
-      bookmarks: isSaved
-        ? current.filter((bookmark) => bookmark.key !== item.key)
-        : [{ ...item, savedAt: new Date().toISOString() }, ...current],
-    });
+    const isSaved = snapshot.settings.bookmarks.some(
+      (bookmark) => bookmark.key === item.key,
+    );
+    enqueue(
+      isSaved
+        ? { type: "removeBookmark", key: item.key }
+        : {
+            type: "addBookmark",
+            bookmark: { ...item, savedAt: new Date().toISOString() },
+          },
+    );
   }, []);
 
-  const removeBookmark = useCallback(
-    (key: string) => {
-      update({
-        bookmarks: readSettings().bookmarks.filter(
-          (bookmark) => bookmark.key !== key,
-        ),
-      });
-    },
-    [update],
-  );
+  const removeBookmark = useCallback((key: string) => {
+    enqueue({ type: "removeBookmark", key });
+  }, []);
 
   return { bookmarks, bookmarkedKeys, toggleBookmark, removeBookmark };
 }
 
 export function useVisitedItems() {
-  const { settings } = useSettings();
+  const { settings } = useSnapshot();
   const visited = settings.visited;
 
   const visitedKeys = useMemo(() => new Set(visited), [visited]);
 
   const markVisited = useCallback((key: string) => {
-    const current = readSettings();
-    if (current.visited.includes(key)) {
-      return;
+    if (!snapshot.settings.visited.includes(key)) {
+      enqueue({ type: "markVisited", key });
     }
-    writeSettings({
-      ...current,
-      visited: [key, ...current.visited].slice(0, MAX_VISITED),
-    });
   }, []);
 
   return { visitedKeys, markVisited };
 }
 
 export function useArxivCategories() {
-  const { settings, update } = useSettings();
+  const { settings } = useSnapshot();
 
-  const toggleCategory = useCallback(
-    (id: string) => {
-      const current = readSettings().arxivCategories;
-      update({
-        arxivCategories: current.includes(id)
-          ? current.filter((category) => category !== id)
-          : [...current, id],
-      });
-    },
-    [update],
-  );
+  const toggleCategory = useCallback((id: string) => {
+    const current = snapshot.settings.arxivCategories;
+    enqueue({
+      type: "setCategories",
+      categories: current.includes(id)
+        ? current.filter((category) => category !== id)
+        : [...current, id],
+    });
+  }, []);
 
   return { categories: settings.arxivCategories, toggleCategory };
 }
 
-// --- Import / export ------------------------------------------------------
-
-export function exportSettings(): string {
-  return JSON.stringify(readSettings(), null, 2);
+/** Dopo il logout lo stato dell'utente non deve restare in pagina. */
+export function clearSettings(): void {
+  pending = [];
+  confirmed = DEFAULT_SETTINGS;
+  publish({ status: "signedOut", settings: DEFAULT_SETTINGS });
 }
 
-/** L'import sovrascrive: è un ripristino dell'oggetto intero, non una fusione. */
-export function importSettings(text: string): Settings {
-  const parsed: unknown = JSON.parse(text);
-  const settings = normalizeSettings(parsed);
-  if (!settings) {
-    throw new Error("Il file non contiene impostazioni valide");
-  }
-  writeSettings(settings);
-  return settings;
+function useSnapshot(): SettingsSnapshot {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-export function settingsFileName(now: Date): string {
-  return `news-hub-settings-${now.toISOString().slice(0, 10)}.json`;
-}
-
-// --- Store ----------------------------------------------------------------
+// --- Store ------------------------------------------------------------------
 
 function subscribe(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(CHANGED_EVENT, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(CHANGED_EVENT, onChange);
-  };
+  listeners.add(onChange);
+  startLoading();
+  return () => listeners.delete(onChange);
 }
 
-function readSettings(): Settings {
-  const raw = safeGetItem(STORAGE_KEY);
-  if (raw === null) {
-    return migrateLegacyKeys() ?? DEFAULT_SETTINGS;
-  }
-  if (raw === cachedRaw) {
-    return cachedSettings;
-  }
-  cachedRaw = raw;
-  cachedSettings = parseSettings(raw) ?? DEFAULT_SETTINGS;
-  return cachedSettings;
+function getSnapshot(): SettingsSnapshot {
+  return snapshot;
 }
 
-/** Il server non ha localStorage: parte dai default, come il primo avvio. */
-function readDefaults(): Settings {
-  return DEFAULT_SETTINGS;
+function getServerSnapshot(): SettingsSnapshot {
+  return LOADING_SNAPSHOT;
 }
 
-function writeSettings(settings: Settings): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch (error) {
-    // Quota piena o storage negato: dirlo, invece di far credere all'utente
-    // che il salvataggio sia andato a buon fine.
-    console.error("Impostazioni non salvate su localStorage", error);
+function publish(next: SettingsSnapshot): void {
+  snapshot = next;
+  listeners.forEach((listener) => listener());
+}
+
+/**
+ * Le modifiche fatte mentre lo stato sta ancora arrivando si tengono da parte
+ * e si riapplicano sopra quello del server. Senza login si possono ancora
+ * cambiare le categorie, ma solo per questa visita: non c'è dove salvarle.
+ */
+function enqueue(operation: SettingsOperation): void {
+  const { status, settings } = snapshot;
+  if (status === "signedOut" || status === "error") {
+    if (operation.type === "setCategories") {
+      publish({ status, settings: applyOperations(settings, [operation]) });
+    }
     return;
   }
-  window.dispatchEvent(new Event(CHANGED_EVENT));
+  pending.push(operation);
+  publish({ status, settings: applyOperations(settings, [operation]) });
+  if (status === "ready") {
+    scheduleFlush(FLUSH_DELAY_MS);
+  }
 }
 
-function parseSettings(raw: string): Settings | null {
+function startLoading(): void {
+  if (hasStartedLoading || typeof window === "undefined") {
+    return;
+  }
+  hasStartedLoading = true;
+  // Nascondere la scheda è l'ultimo momento affidabile per salvare: dopo, il
+  // browser può chiuderla senza altri eventi.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      void flush();
+    }
+  });
+  void loadSettings();
+}
+
+async function loadSettings(): Promise<void> {
   try {
-    return normalizeSettings(JSON.parse(raw));
-  } catch {
-    return null;
+    const response = await fetch(SETTINGS_ENDPOINT, { cache: "no-store" });
+    if (response.status === 401) {
+      clearSettings();
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(await errorMessageOf(response));
+    }
+    confirmed = await importLegacyLocalSettings(
+      (await response.json()) as Settings,
+    );
+    publish({
+      status: "ready",
+      settings: applyOperations(confirmed, pending),
+    });
+    scheduleFlush(FLUSH_DELAY_MS);
+  } catch (error) {
+    console.error("Impostazioni non caricate", error);
+    pending = [];
+    publish({ status: "error", settings: DEFAULT_SETTINGS });
   }
 }
 
 /**
- * Accetta l'oggetto solo se riconoscibile, e scarta le singole voci non valide
- * invece di rifiutare tutto: un file leggermente sporco non deve azzerare le
- * impostazioni di chi lo importa.
+ * Recupero una tantum di quello che la versione precedente teneva nel
+ * localStorage: si unisce all'account e poi si cancella, così non si ripete.
  */
-function normalizeSettings(value: unknown): Settings | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
+async function importLegacyLocalSettings(remote: Settings): Promise<Settings> {
+  const local = readLegacyLocalSettings();
+  if (!local) {
+    return remote;
   }
-  const candidate = value as Partial<Settings>;
-  if (
-    !Array.isArray(candidate.bookmarks) &&
-    !Array.isArray(candidate.visited) &&
-    !Array.isArray(candidate.arxivCategories)
-  ) {
-    return null;
-  }
-
-  return {
-    version: 1,
-    arxivCategories: asArray(candidate.arxivCategories).filter(
-      (id): id is string => typeof id === "string" && isKnownArxivCategory(id),
-    ),
-    bookmarks: asArray(candidate.bookmarks).filter(isBookmark),
-    visited: asArray(candidate.visited)
-      .filter((key): key is string => typeof key === "string")
-      .slice(0, MAX_VISITED),
-  };
-}
-
-function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
-function isBookmark(value: unknown): value is Bookmark {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const candidate = value as Partial<Bookmark>;
-  return (
-    typeof candidate.key === "string" &&
-    typeof candidate.title === "string" &&
-    typeof candidate.url === "string" &&
-    typeof candidate.source === "string" &&
-    typeof candidate.savedAt === "string"
+  const merged = await postOperations(
+    [{ type: "mergeLocal", settings: local }],
+    { keepalive: false },
   );
+  window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  return merged;
 }
 
-/**
- * Recupero una tantum dalle tre chiavi separate della versione precedente, per
- * non far sparire segnalibri e letti già salvati. Si può togliere quando non
- * servirà più: da quel momento le chiavi vecchie restano inerti.
- */
-function migrateLegacyKeys(): Settings | null {
-  const legacy: Settings = {
-    ...DEFAULT_SETTINGS,
-    arxivCategories: readLegacyArray(LEGACY_KEYS.categories).filter(
-      (id): id is string => typeof id === "string" && isKnownArxivCategory(id),
-    ),
-    bookmarks: readLegacyArray(LEGACY_KEYS.bookmarks).filter(isBookmark),
-    visited: readLegacyArray(LEGACY_KEYS.visited).filter(
-      (key): key is string => typeof key === "string",
-    ),
-  };
-
-  const isEmpty =
-    legacy.bookmarks.length === 0 &&
-    legacy.visited.length === 0 &&
-    legacy.arxivCategories.length === 0;
-  if (isEmpty) {
+function readLegacyLocalSettings(): Settings | null {
+  try {
+    const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    return raw === null ? null : normalizeSettings(JSON.parse(raw));
+  } catch {
+    // Storage negato o contenuto illeggibile: non c'è niente da recuperare.
     return null;
   }
-
-  if (legacy.arxivCategories.length === 0) {
-    legacy.arxivCategories = [...DEFAULT_ARXIV_CATEGORIES];
-  }
-  writeSettings(legacy);
-  return legacy;
 }
 
-function readLegacyArray(key: string): unknown[] {
-  const raw = safeGetItem(key);
-  if (raw === null) {
-    return [];
+function scheduleFlush(delayMs: number): void {
+  if (pending.length === 0) {
+    return;
   }
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+  }
+  flushTimer = setTimeout(() => void flush(), delayMs);
+}
+
+async function flush(): Promise<void> {
+  if (isFlushing || pending.length === 0 || snapshot.status !== "ready") {
+    return;
+  }
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  const batch = pending;
+  pending = [];
+  isFlushing = true;
   try {
-    return asArray(JSON.parse(raw));
-  } catch {
-    return [];
+    confirmed = await postOperations(batch, { keepalive: true });
+    isFlushing = false;
+    // Le modifiche arrivate durante il salvataggio restano sopra la risposta.
+    publish({ status: "ready", settings: applyOperations(confirmed, pending) });
+    scheduleFlush(FLUSH_DELAY_MS);
+  } catch (error) {
+    isFlushing = false;
+    if (error instanceof SessionExpiredError) {
+      // Riprovare non servirebbe: senza sessione il server rifiuta sempre.
+      clearSettings();
+      return;
+    }
+    console.error("Impostazioni non salvate, riprovo", error);
+    pending = [...batch, ...pending];
+    scheduleFlush(RETRY_DELAY_MS);
   }
 }
 
-function safeGetItem(key: string): string | null {
+async function postOperations(
+  operations: SettingsOperation[],
+  options: { keepalive: boolean },
+): Promise<Settings> {
+  const body = JSON.stringify({ operations });
+  const response = await fetch(SETTINGS_ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body,
+    // Con `keepalive` la richiesta sopravvive alla chiusura della scheda, ma
+    // il browser rifiuta i corpi oltre 64 KB.
+    keepalive: options.keepalive && body.length < MAX_KEEPALIVE_BYTES,
+  });
+  if (response.status === 401) {
+    throw new SessionExpiredError();
+  }
+  if (!response.ok) {
+    throw new Error(await errorMessageOf(response));
+  }
+  return (await response.json()) as Settings;
+}
+
+class SessionExpiredError extends Error {
+  constructor() {
+    super("Sessione scaduta: serve un nuovo accesso");
+    this.name = "SessionExpiredError";
+  }
+}
+
+async function errorMessageOf(response: Response): Promise<string> {
   try {
-    return window.localStorage.getItem(key);
+    const { error } = (await response.json()) as { error?: string };
+    return `HTTP ${response.status}: ${error ?? response.statusText}`;
   } catch {
-    return null;
+    return `HTTP ${response.status}`;
   }
 }

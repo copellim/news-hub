@@ -2,10 +2,25 @@
 
 import { FeedList } from "@/components/FeedList";
 import type { FeedItem } from "@/lib/feed";
-import { useBookmarks } from "@/lib/settings";
+import { useBookmarks, useSettingsStatus } from "@/lib/settings";
+
+const STATUS_MESSAGES = {
+  loading: "Carico i segnalibri…",
+  signedOut: "Accedi con Google, in alto a destra, per vedere i tuoi segnalibri.",
+  error: "Segnalibri non disponibili: il caricamento dallo storage è fallito.",
+} as const;
 
 export function ReadingQueueBoard() {
   const { bookmarks, removeBookmark } = useBookmarks();
+  const status = useSettingsStatus();
+
+  if (status !== "ready") {
+    return (
+      <p className="py-8 text-center text-sm opacity-60">
+        {STATUS_MESSAGES[status]}
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { AccountMenu } from "@/components/AccountMenu";
 import { LaneTabs } from "@/components/LaneTabs";
-import { SettingsBackup } from "@/components/SettingsBackup";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </span>
             <LaneTabs />
             <div className="ml-auto">
-              <SettingsBackup />
+              <AccountMenu />
             </div>
           </div>
         </header>
