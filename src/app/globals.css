@@ -133,69 +133,74 @@
 }
 
 /*
- * In scuro le card sono più chiare del fondo, come vuole M3 per l'elevazione,
- * e non hanno bordo. I riassunti usano onSurfaceVariant: su righe lunghe il
- * testo pieno abbaglia.
+ * In scuro i neutri di tonal spot (croma 6) restano quasi grigi: al tono 6 dei
+ * fondi la tinta sparisce e le tre sezioni sembravano uguali. Qui neutri e
+ * contenitori vengono da palette tonali della stessa tinta con croma 16
+ * (neutro), 22 (neutro variante) e 32 (secondario), ai toni M3 del tema scuro:
+ * surface 6, stripe 10, nav-surface 12, card 17, switch-off 22, ink 90, prose
+ * 82, muted 80, faint 60, rule 30, chip 30, chip-ink 90. Gli accenti restano
+ * quelli della variante fidelity. Le card sono più chiare del fondo, come vuole
+ * M3 per l'elevazione, e non hanno bordo.
  */
 @media (prefers-color-scheme: dark) {
   [data-section="news"] {
-    --surface: #0e1513;
-    --card: #252b2a;
-    --stripe: #171d1b;
-    --nav-surface: #1a211f;
-    --ink: #dde4e1;
-    --prose: #bec9c5;
-    --muted: #bec9c5;
-    --faint: #899390;
-    --rule: #3f4946;
-    --card-line: #252b2a;
-    --tag-line: #3f4946;
+    --surface: #001714;
+    --card: #152e2a;
+    --stripe: #06201c;
+    --nav-surface: #0a2420;
+    --ink: #cce8e2;
+    --prose: #abd5cc;
+    --muted: #a5cfc6;
+    --faint: #709991;
+    --rule: #264d47;
+    --card-line: #152e2a;
+    --tag-line: #264d47;
     --accent: #81d6c7;
     --on-accent: #003731;
-    --accent-track: #334b47;
-    --chip: #334b47;
-    --chip-ink: #cce8e2;
-    --switch-off: #303634;
+    --accent-track: #005047;
+    --chip: #005047;
+    --chip-ink: #a9f0e2;
+    --switch-off: #213935;
   }
 
   [data-section="papers"] {
-    --surface: #131318;
-    --card: #2a292f;
-    --stripe: #1b1b21;
-    --nav-surface: #1f1f25;
-    --ink: #e4e1e9;
-    --prose: #c7c5d0;
-    --muted: #c7c5d0;
-    --faint: #91909a;
-    --rule: #46464f;
-    --card-line: #2a292f;
-    --tag-line: #46464f;
+    --surface: #101223;
+    --card: #27293b;
+    --stripe: #191a2c;
+    --nav-surface: #1d1e30;
+    --ink: #e1e0f9;
+    --prose: #c8c9ed;
+    --muted: #c3c4e7;
+    --faint: #8d8eaf;
+    --rule: #424462;
+    --card-line: #27293b;
+    --tag-line: #424462;
     --accent: #bec2ff;
     --on-accent: #111b93;
-    --accent-track: #444559;
-    --chip: #444559;
-    --chip-ink: #e1e0f9;
-    --switch-off: #34343a;
+    --accent-track: #3f4372;
+    --chip: #3f4372;
+    --chip-ink: #e0e0ff;
+    --switch-off: #323346;
   }
 
   [data-section="queue"] {
-    --surface: #171216;
-    --card: #2e282d;
-    --stripe: #1f1a1f;
-    --nav-surface: #241e23;
-    --ink: #ebdfe6;
-    --prose: #d0c3cc;
-    --muted: #d0c3cc;
-    --faint: #998d96;
-    --rule: #4d444c;
-    --card-line: #2e282d;
-    --tag-line: #4d444c;
+    --surface: #1d0e1d;
+    --card: #352534;
+    --stripe: #261625;
+    --nav-surface: #2a1a2a;
+    --ink: #f5dbf0;
+    --prose: #e4c2e0;
+    --muted: #debcdb;
+    --faint: #a687a3;
+    --rule: #583e57;
+    --card-line: #352534;
+    --tag-line: #583e57;
     --accent: #ffa9ff;
     --on-accent: #560a5e;
-    --accent-track: #534152;
-    --chip: #534152;
-    --chip-ink: #f5dbf0;
-    --switch-off: #393338;
+    --accent-track: #603960;
+    --chip: #603960;
+    --chip-ink: #ffd6fb;
+    --switch-off: #402f40;
   }
 }
 
@@ -206,7 +211,7 @@ html {
 
 @media (prefers-color-scheme: dark) {
   html {
-    background: #0e1513;
+    background: #001714;
   }
 }
 

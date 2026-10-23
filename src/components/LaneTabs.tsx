@@ -5,73 +5,60 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { spawnRipple } from "@/components/ripple";
+import { SECTIONS, sectionOfPath, type SectionId } from "@/lib/sections";
 import { useBookmarks } from "@/lib/settings";
 
-const TABS = [
-  { href: "/", label: "News", icon: <NewsIcon /> },
-  { href: "/papers", label: "Papers", icon: <PaperIcon /> },
-  { href: "/da-leggere", label: "Da leggere", icon: <BookmarkIcon /> },
-] as const;
+const SECTION_ICONS: Record<SectionId, ReactNode> = {
+  news: <NewsIcon />,
+  papers: <PaperIcon />,
+  queue: <BookmarkIcon />,
+};
 
 /**
- * Da `sm` in su le sezioni sono i titoli della pagina: quella attiva scura, le
- * altre grigie. Sotto `sm` è la navigation bar di Material 3, fissa a fondo
- * schermo dove il pollice ci arriva: fondo surfaceContainer, indicatore a
- * pillola secondaryContainer dietro l'icona attiva, livello di stato e onda
- * alla pressione. In cima resta solo il nome della sezione.
+ * Navigazione di Material 3, la stessa in due posizioni: sotto `sm` è la
+ * navigation bar fissa a fondo schermo, dove il pollice ci arriva; da `sm` in
+ * su è la navigation rail a sinistra. Stesse voci, stessa pillola
+ * secondaryContainer dietro l'icona attiva, stesso livello di stato e stessa
+ * onda alla pressione.
  */
 export function LaneTabs() {
   const pathname = usePathname();
+  const activeSection = sectionOfPath(pathname);
   const { bookmarks } = useBookmarks();
-  const activeTab = TABS.find((tab) => tab.href === pathname);
 
   return (
-    <>
-      {activeTab && (
-        <span className="text-[26px] leading-none font-semibold tracking-[-0.02em] sm:hidden">
-          {activeTab.label}
-        </span>
-      )}
-      <nav
-        aria-label="Sezioni"
-        className="fixed inset-x-0 bottom-0 z-40 flex bg-nav-surface px-2 pb-[env(safe-area-inset-bottom)] sm:static sm:z-auto sm:gap-6 sm:bg-transparent sm:px-0 sm:pb-0"
-      >
-        {TABS.map((tab) => {
-          const isActive = tab === activeTab;
-          const count = tab.href === "/da-leggere" ? bookmarks.length : 0;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              aria-current={isActive ? "page" : undefined}
-              onPointerDown={spawnRipple}
-              className={`nav-item flex h-20 flex-1 flex-col items-center justify-center gap-1 text-xs [-webkit-tap-highlight-color:transparent] focus-visible:outline-none sm:h-auto sm:flex-none sm:flex-row sm:text-[28px] sm:leading-tight sm:font-semibold sm:tracking-[-0.02em] sm:focus-visible:outline-solid ${
-                isActive
-                  ? "font-semibold text-ink"
-                  : "font-medium text-muted hover:text-ink sm:text-faint sm:hover:text-ink"
-              }`}
-            >
-              <TabIndicator isActive={isActive} count={count}>
-                {tab.icon}
-              </TabIndicator>
-              {tab.label}
-              {count > 0 && (
-                <span className="hidden self-start pt-1 text-[15px] font-bold text-accent tabular-nums sm:inline">
-                  {count}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-    </>
+    <nav
+      aria-label="Sezioni"
+      className="fixed inset-x-0 bottom-0 z-40 flex bg-nav-surface px-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:top-0 sm:left-0 sm:w-20 sm:flex-col sm:gap-3 sm:px-0 sm:pt-6 sm:pb-0"
+    >
+      {SECTIONS.map((section) => {
+        const isActive = section.id === activeSection;
+        const count = section.id === "queue" ? bookmarks.length : 0;
+        return (
+          <Link
+            key={section.id}
+            href={section.href}
+            aria-current={isActive ? "page" : undefined}
+            onPointerDown={spawnRipple}
+            className={`nav-item flex h-20 flex-1 flex-col items-center justify-center gap-1 text-xs [-webkit-tap-highlight-color:transparent] focus-visible:outline-none sm:h-16 sm:flex-none ${
+              isActive ? "font-semibold text-ink" : "font-medium text-muted"
+            }`}
+          >
+            <TabIndicator isActive={isActive} count={count}>
+              {SECTION_ICONS[section.id]}
+            </TabIndicator>
+            {section.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
 /**
- * Solo mobile. La pillola è anche il bersaglio del livello di stato e il
- * contenitore dell'onda: su M3 la pressione si vede lì, non sull'intera cella.
- * Il focus da tastiera la contorna, al posto del contorno della cella.
+ * La pillola è anche il bersaglio del livello di stato e il contenitore
+ * dell'onda: su M3 la pressione si vede lì, non sull'intera cella. Il focus da
+ * tastiera la contorna, al posto del contorno della cella.
  */
 function TabIndicator({
   isActive,
@@ -84,7 +71,7 @@ function TabIndicator({
 }) {
   return (
     <span
-      className={`nav-indicator relative flex h-8 w-16 items-center justify-center rounded-full transition-colors duration-200 motion-reduce:transition-none sm:hidden [.nav-item:focus-visible_&]:outline-3 [.nav-item:focus-visible_&]:outline-offset-2 [.nav-item:focus-visible_&]:outline-accent ${
+      className={`nav-indicator relative flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-200 motion-reduce:transition-none [.nav-item:focus-visible_&]:outline-3 [.nav-item:focus-visible_&]:outline-offset-2 [.nav-item:focus-visible_&]:outline-accent ${
         isActive ? "bg-chip text-chip-ink" : "text-muted"
       }`}
     >
@@ -95,7 +82,7 @@ function TabIndicator({
       />
       {children}
       {count > 0 && (
-        <span className="absolute -top-0.5 right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[11px] leading-none font-bold text-on-accent tabular-nums">
+        <span className="absolute -top-0.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[11px] leading-none font-bold text-on-accent tabular-nums">
           {count}
         </span>
       )}

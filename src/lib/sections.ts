@@ -2,14 +2,14 @@
 
 export type SectionId = "news" | "papers" | "queue";
 
-const SECTION_BY_PATH: Record<string, SectionId> = {
-  "/": "news",
-  "/papers": "papers",
-  "/da-leggere": "queue",
-};
+export const SECTIONS: readonly { id: SectionId; href: string; label: string }[] = [
+  { id: "news", href: "/", label: "News" },
+  { id: "papers", href: "/papers", label: "Papers" },
+  { id: "queue", href: "/da-leggere", label: "Da leggere" },
+];
 
 export function sectionOfPath(pathname: string): SectionId {
-  return SECTION_BY_PATH[pathname] ?? "news";
+  return SECTIONS.find((section) => section.href === pathname)?.id ?? "news";
 }
 
 /**
@@ -17,14 +17,12 @@ export function sectionOfPath(pathname: string): SectionId {
  * stesso di `[data-section]` in globals.css. Sta qui perché `viewport` vuole
  * valori letterali e non variabili CSS.
  */
-export const SECTION_THEME_COLORS: Record<
-  SectionId,
-  { light: string; dark: string }
-> = {
-  news: { light: "#f4fbf8", dark: "#0e1513" },
-  papers: { light: "#fbf8ff", dark: "#131318" },
-  queue: { light: "#fff7fa", dark: "#171216" },
-};
+const SECTION_THEME_COLORS: Record<SectionId, { light: string; dark: string }> =
+  {
+    news: { light: "#f4fbf8", dark: "#001714" },
+    papers: { light: "#fbf8ff", dark: "#101223" },
+    queue: { light: "#fff7fa", dark: "#1d0e1d" },
+  };
 
 export function themeColorOf(section: SectionId) {
   const colors = SECTION_THEME_COLORS[section];

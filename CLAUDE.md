@@ -283,17 +283,23 @@ Prima del montaggio la riga mostra la data assoluta.
 
 ## Stile: Material 3, una palette per sezione
 
-L'interfaccia segue Material 3: ruoli colore, navigation bar su mobile, tab,
-pulsante segmentato, interruttore, filter chip, livelli di stato e onda alla
-pressione. I font restano quelli scelti per la lettura, Instrument Sans e
+L'interfaccia segue Material 3: ruoli colore, top app bar piccola (`AppBar`),
+navigation bar su mobile e navigation rail da `sm` (lo stesso `LaneTabs`),
+tab, pulsante segmentato, interruttore, filter chip, livelli di stato e onda
+alla pressione. I font restano quelli scelti per la lettura, Instrument Sans e
 Newsreader.
 
+- **Niente titolone.** La sezione la dice già la navigazione: in cima resta
+  una barra di una riga con il nome a 22 px, che quando la pagina scorre
+  passa al tono del contenitore.
 - **Palette per sezione.** News, Papers e Da leggere hanno ciascuna i propri
   ruoli M3, generati con `@material/material-color-utilities` da un colore
-  sorgente. Fondi e neutri vengono dalla variante tonal spot, gli accenti
-  dalla fidelity. I valori stanno in `globals.css` sotto `[data-section]`, in
-  chiaro e in scuro. Rigenerarli significa rifare il calcolo e ricontrollare
-  i contrasti, non ritoccare un esadecimale a mano.
+  sorgente. In chiaro fondi e neutri vengono dalla variante tonal spot e gli
+  accenti dalla fidelity. In scuro i neutri di tonal spot (croma 6) facevano
+  sembrare uguali le tre sezioni, quindi vengono da palette tonali con croma
+  16, 22 e 32 ai toni M3 del tema scuro. I valori stanno in `globals.css`
+  sotto `[data-section]`. Rigenerarli significa rifare il calcolo e
+  ricontrollare i contrasti, non ritoccare un esadecimale a mano.
 - **`data-section` sta solo in `SectionFrame`**, nel layout, e non nelle
   pagine: per via di `<Activity>` (sotto) la pagina precedente resta nel DOM,
   e due sezioni vive insieme si contenderebbero i colori. Il `surface` di ogni

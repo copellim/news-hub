@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Newsreader } from "next/font/google";
 
-import { AccountMenu } from "@/components/AccountMenu";
+import { AppBar } from "@/components/AppBar";
 import { LaneTabs } from "@/components/LaneTabs";
 import { SectionFrame } from "@/components/SectionFrame";
 import { themeColorOf } from "@/lib/sections";
@@ -41,17 +41,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="h-full font-sans">
         <SectionFrame>
-          <header className="border-b border-rule sm:border-0">
-            <div className="mx-auto flex w-full max-w-188 items-center gap-x-6 gap-y-2 px-5 pt-5 pb-4 sm:items-baseline sm:px-6 sm:pt-8 sm:pb-0">
-              <LaneTabs />
-              <div className="ml-auto">
-                <AccountMenu />
-              </div>
-            </div>
-          </header>
-          <main className="mx-auto w-full max-w-188 grow px-3 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-2 sm:pt-5 sm:pb-20">
-            {children}
-          </main>
+          <LaneTabs />
+          {/* Da `sm` la navigazione è una colonna fissa di 80 px a sinistra:
+              il contenuto si centra nello spazio che resta. */}
+          <div className="flex grow flex-col sm:pl-20">
+            <AppBar />
+            <main className="mx-auto w-full max-w-188 grow px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-2 sm:pb-20">
+              {children}
+            </main>
+          </div>
         </SectionFrame>
       </body>
     </html>
