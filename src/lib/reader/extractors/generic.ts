@@ -64,9 +64,9 @@ export function articleFromHtml(
     siteName: parsed.siteName?.trim() || siteName,
     publishedAt: parsed.publishedTime?.trim() || null,
     html: cleanHtml(parsed.content, baseUrl),
-    notice: null,
     sourceUrl,
     extractor: "generic",
+    paper: null,
   };
 }
 

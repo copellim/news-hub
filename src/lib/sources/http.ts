@@ -83,16 +83,28 @@ export async function fetchPage(
     await response.body?.cancel();
     return { ...page, html: null };
   }
-  return { ...page, html: await readLimitedText(source, response) };
+  const bytes = await readLimitedBytes(source, response, MAX_PAGE_BYTES);
+  return { ...page, html: new TextDecoder().decode(bytes) };
+}
+
+/** Un file binario, es. il PDF di un paper, con un tetto sulla dimensione. */
+export async function fetchBytes(
+  source: string,
+  url: string,
+  maxBytes: number,
+): Promise<Buffer> {
+  const response = await fetchWithUserAgent(source, url, {}, SOURCE_TIMEOUT_MS);
+  return readLimitedBytes(source, response, maxBytes);
 }
 
 /** Legge il corpo a pezzi e si ferma al tetto, invece di scaricare tutto e poi scartarlo. */
-async function readLimitedText(
+async function readLimitedBytes(
   source: string,
   response: Response,
-): Promise<string> {
+  maxBytes: number,
+): Promise<Buffer> {
   if (!response.body) {
-    return "";
+    return Buffer.alloc(0);
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -103,11 +115,11 @@ async function readLimitedText(
       break;
     }
     size += value.byteLength;
-    if (size > MAX_PAGE_BYTES) {
+    if (size > maxBytes) {
       await reader.cancel();
-      throw new SourceError(source, `pagina oltre ${MAX_PAGE_BYTES} byte su ${response.url}`);
+      throw new SourceError(source, `file oltre ${maxBytes} byte su ${response.url}`);
     }
     chunks.push(value);
   }
-  return new TextDecoder().decode(Buffer.concat(chunks));
+  return Buffer.concat(chunks);
 }

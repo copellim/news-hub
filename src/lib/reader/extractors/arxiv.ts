@@ -11,37 +11,19 @@ import type { Extractor } from "./extractor";
 const ARXIV_ID_PATTERN =
   /^\/(?:abs|html|pdf)\/((?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?)/;
 
-/** Parti della pagina HTML di arXiv che non sono il paper. */
-const ARXIV_CHROME_SELECTORS = [
-  ".ltx_page_header",
-  ".ltx_page_footer",
-  ".ltx_title_document",
-  ".ltx_authors",
-  ".package-alerts",
-  "nav",
-  "button",
-].join(", ");
-
 /**
- * Il paper intero dall'HTML che arXiv genera con LaTeXML, formule in MathML
- * comprese. Non tutti i paper ce l'hanno (17 su 20 in un campione di cs.LG):
- * senza, resta l'abstract della pagina `abs`, con l'avviso.
+ * Di un paper la card mostra l'abstract e rimanda al testo intero: leggere un
+ * paper di quaranta pagine in una card non è lettura rapida. Basta la pagina
+ * `abs`, che dice anche se arXiv ha la versione HTML (non tutti i paper ce
+ * l'hanno: 17 su 20 in un campione di cs.LG); senza, il rimando è al PDF.
  */
 export const arxivExtractor: Extractor = {
   id: "arxiv",
   matches: (url) => arxivIdOf(url) !== null,
   async extract(url) {
     const id = arxivIdOf(url) as string;
-    try {
-      const page = await fetchPage("arxiv", `https://arxiv.org/html/${id}`);
-      if (page.html) {
-        return paperFromLatexml(page.html, url.href, page.finalUrl);
-      }
-    } catch (error) {
-      console.info(`arXiv ${id} senza HTML, uso l'abstract`, error);
-    }
-    const abstractPage = await fetchPage("arxiv", `https://arxiv.org/abs/${id}`);
-    return paperFromAbstractPage(abstractPage.html ?? "", url.href, id);
+    const page = await fetchPage("arxiv", `https://arxiv.org/abs/${id}`);
+    return paperFromAbstractPage(page.html ?? "", url.href, id);
   },
 };
 
@@ -52,47 +34,18 @@ export function arxivIdOf(url: URL): string | null {
   return ARXIV_ID_PATTERN.exec(url.pathname)?.[1] ?? null;
 }
 
-export function paperFromLatexml(
-  html: string,
-  sourceUrl: string,
-  baseUrl: string,
-): ReaderArticle {
-  const { document } = parseHTML(html) as unknown as { document: Document };
-  const article = document.querySelector("article.ltx_document");
-  if (!article) {
-    throw new Error("Pagina HTML di arXiv senza article.ltx_document");
-  }
-  const title = textOf(document.querySelector(".ltx_title_document"));
-  const authors = textOf(document.querySelector(".ltx_authors .ltx_personname"));
-  article
-    .querySelectorAll(ARXIV_CHROME_SELECTORS)
-    .forEach((element) => element.remove());
-
-  return {
-    status: "ready",
-    title,
-    byline: authors,
-    siteName: "arXiv",
-    publishedAt: null,
-    html: cleanHtml(article.innerHTML, baseUrl),
-    notice: null,
-    sourceUrl,
-    extractor: "arxiv",
-  };
-}
-
 export function paperFromAbstractPage(
   html: string,
   sourceUrl: string,
   id: string,
 ): ReaderArticle {
   const { document } = parseHTML(html) as unknown as { document: Document };
-  const abstract = document.querySelector("blockquote.abstract");
-  abstract?.querySelector(".descriptor")?.remove();
-  const title = document.querySelector("h1.title");
-  title?.querySelector(".descriptor")?.remove();
-  const authors = document.querySelector(".authors");
-  authors?.querySelector(".descriptor")?.remove();
+  const abstract = withoutDescriptor(document.querySelector("blockquote.abstract"));
+  const title = withoutDescriptor(document.querySelector("h1.title"));
+  const authors = withoutDescriptor(document.querySelector(".authors"));
+  const htmlVersion = document
+    .querySelector("a#latexml-download-link")
+    ?.getAttribute("href");
 
   return {
     status: "ready",
@@ -104,10 +57,22 @@ export function paperFromAbstractPage(
       `<p>${abstract?.innerHTML.trim() ?? ""}</p>`,
       `https://arxiv.org/abs/${id}`,
     ),
-    notice: "arXiv non ha la versione HTML di questo paper: qui c'è solo l'abstract, il testo intero è nel PDF.",
     sourceUrl,
     extractor: "arxiv",
+    paper: {
+      key: `arxiv:${id.replace(/v\d+$/, "")}`,
+      fullTextUrl: htmlVersion
+        ? new URL(htmlVersion, "https://arxiv.org/").href
+        : `https://arxiv.org/pdf/${id}`,
+      fullTextFormat: htmlVersion ? "html" : "pdf",
+    },
   };
+}
+
+/** arXiv apre titolo, autori e abstract con un'etichetta ("Abstract:") che qui non serve. */
+function withoutDescriptor(element: Element | null): Element | null {
+  element?.querySelector(".descriptor")?.remove();
+  return element;
 }
 
 function textOf(element: Element | null): string | null {

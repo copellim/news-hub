@@ -20,10 +20,10 @@ export type ReaderArticle =
       publishedAt: string | null;
       /** HTML già ripulito sul server, con link e immagini assoluti. */
       html: string;
-      /** Avviso sopra il testo, es. "di questo paper c'è solo l'abstract". */
-      notice: string | null;
       sourceUrl: string;
       extractor: ExtractorId;
+      /** Solo per i paper: la card mostra l'abstract e rimanda al testo intero. */
+      paper: PaperLinks | null;
     }
   | {
       status: "unavailable";
@@ -31,6 +31,21 @@ export type ReaderArticle =
       excerpt: string | null;
       sourceUrl: string;
     };
+
+export type PaperLinks = {
+  /** Chiave dell'item (`arxiv:<id>`): serve per il riassunto del paper intero. */
+  key: string;
+  /** La versione HTML di arXiv quando c'è, altrimenti il PDF. */
+  fullTextUrl: string;
+  fullTextFormat: "html" | "pdf";
+};
+
+/** Il riassunto del paper intero, generato a richiesta e salvato per tutti. */
+export type PaperDigest = {
+  text: string;
+  model: string;
+  createdAt: string;
+};
 
 export type Comment = {
   id: string;

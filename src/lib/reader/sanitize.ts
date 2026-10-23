@@ -3,8 +3,8 @@ import "server-only";
 import sanitize, { type IOptions } from "sanitize-html";
 
 /**
- * Tag di MathML: le formule di arXiv arrivano così, e i browser li disegnano
- * da soli. `annotation` contiene il sorgente TeX, che resta nascosto.
+ * Tag di MathML: le pagine tecniche scrivono così le formule, e i browser le
+ * disegnano da soli. `annotation` contiene il sorgente TeX, che resta nascosto.
  */
 const MATHML_TAGS = [
   "math",

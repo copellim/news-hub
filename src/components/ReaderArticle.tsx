@@ -1,11 +1,23 @@
 "use client";
 
-import type { ReaderArticle as Article } from "@/lib/reader-model";
 import { hostnameOf } from "@/lib/feed";
+import { usePaperDigest } from "@/lib/reader-content";
+import type { ReaderArticle as Article, PaperLinks } from "@/lib/reader-model";
+
+/** "Problema: …": l'etichetta con cui il prompt apre ogni paragrafo del riassunto. */
+const DIGEST_LABEL_PATTERN = /^([A-ZÀ-Ý][^:\n]{1,24}):\s+/;
+
+const digestDate = new Intl.DateTimeFormat("it-IT", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "Europe/Rome",
+});
 
 /**
  * L'articolo estratto, nello stesso serif dei riassunti. L'HTML arriva già
- * ripulito dal server (`cleanHtml`): qui si mostra e basta.
+ * ripulito dal server (`cleanHtml`): qui si mostra e basta. Di un paper c'è
+ * solo l'abstract, con il rimando al testo intero e il riassunto a richiesta.
  */
 export function ReaderArticle({ article }: { article: Article }) {
   if (article.status === "unavailable") {
@@ -29,16 +41,95 @@ export function ReaderArticle({ article }: { article: Article }) {
           </h2>
         )}
       </header>
-      {article.notice && (
-        <p className="rounded-xl border border-warn-line bg-warn px-4 py-3 text-sm text-warn-ink">
-          {article.notice}
-        </p>
+      {article.paper && (
+        <h3 className="mt-2 text-sm font-semibold text-muted">Abstract</h3>
       )}
       <div
         className="reader-prose"
         dangerouslySetInnerHTML={{ __html: article.html }}
       />
+      {article.paper && <PaperActions paper={article.paper} />}
     </article>
+  );
+}
+
+function PaperActions({ paper }: { paper: PaperLinks }) {
+  const { state, generate } = usePaperDigest(paper.key);
+
+  return (
+    <section className="mt-4 flex flex-col gap-5 border-t border-rule pt-5">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Pulsante tonale di M3 per il rimando, pieno per l'azione che costa. */}
+        <a
+          href={paper.fullTextUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="state-layer inline-flex h-10 items-center rounded-full bg-chip px-6 text-sm font-semibold text-chip-ink"
+        >
+          Leggi il paper completo ({paper.fullTextFormat === "html" ? "HTML" : "PDF"})
+        </a>
+        {(state.status === "missing" || state.status === "error") && (
+          <button
+            type="button"
+            onClick={() => void generate()}
+            className="state-layer inline-flex h-10 items-center rounded-full bg-accent px-6 text-sm font-semibold text-on-accent"
+          >
+            {state.status === "error" ? "Riprova il riassunto" : "Riassumi il paper con l'AI"}
+          </button>
+        )}
+      </div>
+
+      {state.status === "missing" && (
+        <p className="text-sm text-muted">
+          Il riassunto lo scrive Claude leggendo il PDF intero: ci vuole qualche
+          decina di secondi, e poi resta salvato.
+        </p>
+      )}
+      {state.status === "generating" && (
+        <div className="flex flex-col gap-2">
+          <div className="relative h-1 overflow-hidden rounded-full">
+            <span className="linear-progress" role="progressbar" aria-label="Riassunto in corso" />
+          </div>
+          <p className="text-sm text-muted">
+            Il riassunto si sta scrivendo: ci vuole qualche decina di secondi.
+          </p>
+        </div>
+      )}
+      {state.status === "error" && (
+        <p className="text-sm text-warn-ink">Il riassunto non è riuscito: {state.message}</p>
+      )}
+      {state.status === "ready" && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-muted">Riassunto del paper intero</h3>
+          <div className="reader-prose">
+            {/* Il testo non cambia una volta scritto: l'indice è una chiave stabile. */}
+            {state.digest.text.split(/\n\s*\n/).map((paragraph, index) => (
+              <DigestParagraph key={index} text={paragraph.trim()} />
+            ))}
+          </div>
+          <p className="text-xs text-muted">
+            Scritto da {state.digest.model} il{" "}
+            {digestDate.format(new Date(state.digest.createdAt))}, dal PDF del paper.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DigestParagraph({ text }: { text: string }) {
+  const match = DIGEST_LABEL_PATTERN.exec(text);
+  if (!match) {
+    return <p>{text}</p>;
+  }
+  // Dopo i due punti il modello scrive in minuscolo; con l'etichetta in
+  // grassetto seguita dal punto, la frase riparte con la maiuscola.
+  const body = text.slice(match[0].length);
+  return (
+    <p>
+      <strong className="font-sans font-semibold text-ink">{match[1]}.</strong>{" "}
+      {body.charAt(0).toLocaleUpperCase("it") + body.slice(1)}
+    </p>
   );
 }
 

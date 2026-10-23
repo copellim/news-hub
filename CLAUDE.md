@@ -63,7 +63,7 @@ src/lib/user-settings.ts    # server: un file JSON per utente su Blob
 src/lib/blob-store.ts       # server: lettura e scrittura condizionale su Blob
 src/lib/auth.ts             # server: Better Auth, allowlist, getSignedInEmail
 src/lib/auth-client.ts      # client: authClient di Better Auth
-src/lib/summaries/          # server: JSONL dei riassunti + generazione con Haiku
+src/lib/summaries/          # server: JSONL dei riassunti, riassunti dei paper interi, generazione con Haiku
 src/lib/paper-summaries.ts  # client: usePaperSummaries
 src/lib/reader-model.ts     # client-safe: ReaderArticle, Discussion, Comment
 src/lib/reader/             # server: estrattori, adapter dei commenti, sanitizer, whitelist
@@ -251,6 +251,29 @@ per paper (`key`, `text`, `origin`, `model`, `promptVersion`, `createdAt`).
 - **`SUMMARY_PROMPT_VERSION`**: alzarlo fa rigenerare tutto al caricamento
   successivo. Un rifiuto o un testo tagliato non si salvano.
 
+### Riassunto del paper intero
+
+Nella card di un paper c'è "Riassumi il paper con l'AI": un riassunto in
+cinque paragrafi (Problema, Idea, Metodo, Risultati, Limiti), **solo a
+richiesta**, perché si paga.
+
+- **Fonte**: il PDF di arXiv. Lo scarica il server e lo passa in base64, con
+  un tetto di 20 MB per stare sotto i 32 MB della richiesta. Dare l'URL al
+  modello nasconderebbe un errore di arXiv. Il PDF ha anche figure e tabelle,
+  e c'è per tutti i paper, mentre l'HTML no.
+- **Modello**: Haiku 5.5 con ragionamento adattivo a sforzo `medium`. Su un
+  paper di 30 pagine: ~10 s e meno di un centesimo.
+- **Un file per paper**, `paper-digests/<id>.json` su Blob, comune a tutti. Non
+  sta in `summaries.jsonl`, che si scarica intero a ogni apertura di Papers:
+  qualche centinaio di parole per paper lo gonfierebbe per testi letti solo
+  aprendo la card. Si legge dall'origine, così un riassunto appena scritto
+  compare alla prossima apertura.
+- **Route `/api/reader/digest`**: GET legge, POST genera. POST rilegge prima di
+  generare, così un doppio click non paga due volte. Accetta solo id arXiv
+  nuovi, perché l'id diventa il nome del file.
+- **`DIGEST_PROMPT_VERSION`**: alzarlo fa ricomparire il pulsante; un riassunto
+  vecchio non si rigenera da solo.
+
 ## Lettura diretta
 
 Con l'accesso, un click sul titolo o sui commenti apre una card (`ReaderSheet`):
@@ -271,9 +294,11 @@ resta un link: anche le route rispondono 401.
   compreso. Gli altri erano app o SPA (LessWrong), e sotto i 500 caratteri il
   risultato diventa `unavailable` con l'`og:description`. Niente iframe: 20
   siti su 49 lo bloccano con `X-Frame-Options` o `frame-ancestors`.
-- **arXiv dall'HTML LaTeXML** (`arxiv.org/html/<id>`, formule in MathML). Non
-  tutti i paper ce l'hanno: senza, resta l'abstract della pagina `abs` con un
-  avviso.
+- **Di un paper solo l'abstract**, dalla pagina `abs`. La card ha due pulsanti:
+  "Leggi il paper completo", che rimanda all'HTML di arXiv quando c'è
+  (`a#latexml-download-link`; 17 paper su 20 in un campione di cs.LG) e
+  altrimenti al PDF, e il riassunto del paper intero (vedi sopra). Il testo
+  intero in una card non è lettura rapida.
 - **Commenti**:
   - HN: l'albero da Algolia `items/<id>`, ma i suoi figli sono in ordine di id.
     L'ordine del primo livello viene dai `kids` di Firebase; i livelli sotto

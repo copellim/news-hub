@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { arxivIdOf, paperFromAbstractPage, paperFromLatexml } from "./extractors/arxiv";
+import { arxivIdOf, paperFromAbstractPage } from "./extractors/arxiv";
 import { articleFromHtml } from "./extractors/generic";
 import { cleanHtml } from "./sanitize";
 
@@ -86,39 +86,47 @@ describe("arXiv", () => {
     expect(arxivIdOf(new URL("https://example.com/abs/2610.28027"))).toBeNull();
   });
 
-  it("dall'HTML LaTeXML prende il paper senza l'intestazione di arXiv", () => {
-    const article = paperFromLatexml(
-      `<html><body><header class="ltx_page_header">arXiv</header>
-       <article class="ltx_document"><h1 class="ltx_title_document">Un paper</h1>
-       <div class="ltx_authors"><span class="ltx_personname">Ada Lovelace</span></div>
-       <p>Testo con <math><mi>x</mi></math></p>
-       <img class="ltx_graphics" src="2410.23726v2/Figures/x.png"></article></body></html>`,
-      "https://arxiv.org/abs/2410.23726",
-      "https://arxiv.org/html/2410.23726",
+  const abstractPage = (downloads: string) =>
+    `<html><body><h1 class="title"><span class="descriptor">Title:</span>Un paper</h1>
+     <div class="authors"><span class="descriptor">Authors:</span><a>Ada Lovelace</a></div>
+     <blockquote class="abstract"><span class="descriptor">Abstract:</span>Il riassunto.</blockquote>
+     <a href="/pdf/2610.30926" class="abs-button download-pdf">View PDF</a>${downloads}
+     </body></html>`;
+
+  it("dalla pagina abs prende solo l'abstract, e rimanda all'HTML quando c'è", () => {
+    const article = paperFromAbstractPage(
+      abstractPage(
+        '<a href="https://arxiv.org/html/2610.30926v1" class="abs-button" id="latexml-download-link">HTML</a>',
+      ),
+      "https://arxiv.org/abs/2610.30926",
+      "2610.30926",
     );
-    expect(article).toMatchObject({ status: "ready", title: "Un paper", byline: "Ada Lovelace" });
-    if (article.status === "ready") {
-      expect(article.html).not.toContain("Un paper");
-      expect(article.html).toContain("<math><mi>x</mi></math>");
-      expect(article.html).toContain(
-        'src="https://arxiv.org/html/2410.23726v2/Figures/x.png"',
-      );
-    }
+    expect(article).toMatchObject({
+      status: "ready",
+      title: "Un paper",
+      byline: "Ada Lovelace",
+      html: "<p>Il riassunto.</p>",
+      paper: {
+        key: "arxiv:2610.30926",
+        fullTextUrl: "https://arxiv.org/html/2610.30926v1",
+        fullTextFormat: "html",
+      },
+    });
   });
 
-  it("senza HTML resta l'abstract, con l'avviso", () => {
+  it("senza la versione HTML rimanda al PDF", () => {
     const article = paperFromAbstractPage(
-      `<html><body><h1 class="title"><span class="descriptor">Title:</span>Un paper</h1>
-       <div class="authors"><span class="descriptor">Authors:</span><a>Ada Lovelace</a></div>
-       <blockquote class="abstract"><span class="descriptor">Abstract:</span>Il riassunto.</blockquote>
-       </body></html>`,
-      "https://arxiv.org/abs/2610.28027",
-      "2610.28027",
+      abstractPage(""),
+      "https://arxiv.org/abs/2303.03538v2",
+      "2303.03538v2",
     );
-    expect(article).toMatchObject({ status: "ready", title: "Un paper", byline: "Ada Lovelace" });
-    if (article.status === "ready") {
-      expect(article.html).toBe("<p>Il riassunto.</p>");
-      expect(article.notice).toContain("solo l'abstract");
-    }
+    expect(article).toMatchObject({
+      paper: {
+        // La chiave è quella dei feed, senza versione.
+        key: "arxiv:2303.03538",
+        fullTextUrl: "https://arxiv.org/pdf/2303.03538v2",
+        fullTextFormat: "pdf",
+      },
+    });
   });
 });

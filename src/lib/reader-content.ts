@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { Discussion, ReaderArticle, ReaderPart } from "@/lib/reader-model";
+import type {
+  Discussion,
+  PaperDigest,
+  ReaderArticle,
+  ReaderPart,
+} from "@/lib/reader-model";
 
 export type ReaderLoad<T> =
   | { status: "loading" }
@@ -73,6 +78,75 @@ function useReaderPart<T>(part: ReaderPart, key: string | null) {
       ? null
       : (results.get(requestKey) ?? { status: "loading" });
   return { load, retry };
+}
+
+export type DigestState =
+  | { status: "checking" }
+  | { status: "missing" }
+  | { status: "generating" }
+  | { status: "ready"; digest: PaperDigest }
+  | { status: "error"; message: string };
+
+/**
+ * Il riassunto del paper intero: all'apertura si guarda se qualcuno l'ha già
+ * generato; altrimenti resta un pulsante, perché ogni generazione si paga.
+ */
+export function usePaperDigest(key: string) {
+  const [state, setState] = useState<DigestState>({ status: "checking" });
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchDigest(key, "GET").then(
+      (digest) => {
+        if (isCurrent) {
+          setState(digest ? { status: "ready", digest } : { status: "missing" });
+        }
+      },
+      (error: unknown) => {
+        if (isCurrent) {
+          // Senza sapere se c'è, il pulsante resta: al peggio rilegge quello salvato.
+          console.error("Riassunto del paper non letto", error);
+          setState({ status: "missing" });
+        }
+      },
+    );
+    return () => {
+      isCurrent = false;
+    };
+  }, [key]);
+
+  const generate = useCallback(async () => {
+    setState({ status: "generating" });
+    try {
+      const digest = await fetchDigest(key, "POST");
+      setState(
+        digest
+          ? { status: "ready", digest }
+          : { status: "error", message: "Nessun testo ricevuto" },
+      );
+    } catch (error) {
+      setState({
+        status: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [key]);
+
+  return { state, generate };
+}
+
+async function fetchDigest(
+  key: string,
+  method: "GET" | "POST",
+): Promise<PaperDigest | null> {
+  const response = await fetch(
+    `/api/reader/digest?key=${encodeURIComponent(key)}`,
+    { method },
+  );
+  if (!response.ok) {
+    throw new Error(await errorMessageOf(response));
+  }
+  return ((await response.json()) as { digest: PaperDigest | null }).digest;
 }
 
 function requestOnce<T>(

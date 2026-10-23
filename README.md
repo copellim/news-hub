@@ -79,9 +79,11 @@ rielaborano a ogni apertura.
 
 **Lettura diretta.** Con l'accesso, un click sul titolo apre l'articolo in una
 card dentro il portale, con i commenti di HN, Lobsters e Hugging Face in una
-seconda tab. L'articolo si estrae con Readability da qualsiasi sito, i paper
-arXiv dalla loro versione HTML; quello che non si può leggere lì (un'app, un
-PDF) rimanda al sito. Ctrl/Cmd+click apre ancora il sito in una scheda nuova.
+seconda tab. L'articolo si estrae con Readability da qualsiasi sito; quello
+che non si può leggere lì (un'app, un PDF) rimanda al sito. Di un paper la
+card mostra l'abstract, il link al testo completo e, a richiesta, un riassunto
+del paper intero scritto da Claude Haiku dal PDF e salvato su Blob per le volte
+successive. Ctrl/Cmd+click apre ancora il sito in una scheda nuova.
 
 ## Account e impostazioni
 
