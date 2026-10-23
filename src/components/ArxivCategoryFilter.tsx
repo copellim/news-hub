@@ -19,15 +19,16 @@ export function ArxivCategoryFilter({
   const archives = groupByArchive();
 
   return (
-    <details className="rounded border border-black/10 px-3 py-2 dark:border-white/10">
-      <summary className="cursor-pointer text-xs opacity-70">
-        Categorie arXiv — {summaryOf(selected)}
+    <details className="mx-1 rounded-lg border border-card-line bg-white px-4 py-3 sm:mx-4">
+      <summary className="cursor-pointer text-sm text-muted">
+        <span className="font-semibold text-ink">Categorie arXiv</span>:{" "}
+        {summaryOf(selected)}
       </summary>
 
-      <div className="mt-3 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-4">
         {archives.map(([archive, categories]) => (
-          <fieldset key={archive} className="flex flex-col gap-1.5">
-            <legend className="mb-1 text-xs font-medium opacity-50">
+          <fieldset key={archive} className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-semibold text-muted">
               {archive}
             </legend>
             <div className="flex flex-wrap gap-1.5">
@@ -40,15 +41,15 @@ export function ArxivCategoryFilter({
                     disabled={disabled}
                     onClick={() => onToggle(category.id)}
                     aria-pressed={isSelected}
-                    className={
+                    className={`rounded-full border px-2.5 py-1 text-[13px] disabled:opacity-50 ${
                       isSelected
-                        ? "rounded bg-emerald-600 px-2 py-1 text-xs text-white disabled:opacity-50"
-                        : "rounded border border-black/15 px-2 py-1 text-xs hover:bg-black/5 disabled:opacity-40 dark:border-white/20 dark:hover:bg-white/10"
-                    }
+                        ? "border-accent bg-accent text-white"
+                        : "border-tag-line text-ink hover:border-faint"
+                    }`}
                   >
                     {category.label}{" "}
-                    <span className="font-mono opacity-60">
-                      ({category.id})
+                    <span className={isSelected ? "text-white/75" : "text-muted"}>
+                      {category.id}
                     </span>
                   </button>
                 );

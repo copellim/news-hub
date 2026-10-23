@@ -11,50 +11,57 @@ const TABS = [
   { href: "/da-leggere", label: "Da leggere" },
 ] as const;
 
-const LINK_CLASS =
-  "relative flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium sm:flex-none sm:rounded sm:px-3 sm:py-1.5";
-
 /**
- * Sotto `sm` la navigazione è una barra fissa a fondo schermo: su mobile le tab
- * nell'header competevano con titolo e backup e finivano su una riga a parte.
- * Da `sm` in su torna a essere una riga di tab dentro l'header.
+ * Da `sm` in su le sezioni sono i titoli della pagina: quella attiva scura, le
+ * altre grigie. Sotto `sm` la navigazione è una barra fissa a fondo schermo,
+ * dove il pollice ci arriva, e in cima resta solo il nome della sezione.
  */
 export function LaneTabs() {
   const pathname = usePathname();
   const { bookmarks } = useBookmarks();
+  const activeTab = TABS.find((tab) => tab.href === pathname);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-black/10 bg-background pb-[env(safe-area-inset-bottom)] dark:border-white/10 sm:static sm:z-auto sm:gap-1 sm:border-0 sm:bg-transparent sm:pb-0">
-      {TABS.map((tab) => {
-        const isActive = pathname === tab.href;
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={isActive ? "page" : undefined}
-            className={
-              isActive
-                ? `${LINK_CLASS} sm:bg-foreground sm:text-background`
-                : `${LINK_CLASS} opacity-60 hover:opacity-100`
-            }
-          >
-            {/* Su mobile la pillola scura riempirebbe l'intera cella: l'attivo
-                si segnala con una barretta in cima. */}
-            {isActive && (
-              <span
-                aria-hidden
-                className="absolute inset-x-0 top-0 h-0.5 bg-foreground sm:hidden"
-              />
-            )}
-            {tab.label}
-            {tab.href === "/da-leggere" && bookmarks.length > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-1.5 text-xs tabular-nums text-amber-700 dark:text-amber-300">
-                {bookmarks.length}
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      {activeTab && (
+        <span className="font-serif text-[26px] leading-none font-semibold sm:hidden">
+          {activeTab.label}
+        </span>
+      )}
+      <nav
+        aria-label="Sezioni"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-rule bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:z-auto sm:gap-6 sm:border-0 sm:bg-transparent sm:pb-0"
+      >
+        {TABS.map((tab) => {
+          const isActive = tab === activeTab;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              aria-current={isActive ? "page" : undefined}
+              className={`relative flex h-15 flex-1 items-center justify-center gap-1 text-[15px] font-semibold sm:h-auto sm:flex-none sm:font-serif sm:text-[28px] sm:leading-tight ${
+                isActive
+                  ? "text-ink"
+                  : "text-muted hover:text-ink sm:text-faint sm:hover:text-ink"
+              }`}
+            >
+              {/* Su mobile l'attivo si segnala anche con una barretta in cima. */}
+              {isActive && (
+                <span
+                  aria-hidden
+                  className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-accent sm:hidden"
+                />
+              )}
+              {tab.label}
+              {tab.href === "/da-leggere" && bookmarks.length > 0 && (
+                <span className="font-sans text-xs font-bold text-accent tabular-nums sm:self-start sm:pt-1 sm:text-[15px]">
+                  {bookmarks.length}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

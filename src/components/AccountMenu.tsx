@@ -4,7 +4,7 @@ import { authClient } from "@/lib/auth-client";
 import { clearSettings, useSettingsStatus } from "@/lib/settings";
 
 const BUTTON_CLASS =
-  "rounded border border-black/15 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10";
+  "rounded py-2 text-sm text-muted underline-offset-4 hover:text-ink hover:underline";
 
 /**
  * Accesso con Google. Le news e i paper si leggono anche senza; segnalibri,
@@ -37,16 +37,16 @@ export function AccountMenu() {
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
+    <div className="flex items-center gap-3 text-sm">
       {settingsStatus === "error" && (
         <span
-          className="text-amber-700 dark:text-amber-300"
+          className="text-[#9A4A00]"
           title="Segnalibri e letti non sono stati caricati: vedi la console"
         >
           stato non disponibile
         </span>
       )}
-      <span className="hidden opacity-60 sm:inline">{session.user.email}</span>
+      <span className="hidden text-muted sm:inline">{session.user.email}</span>
       <button
         type="button"
         onClick={async () => {

@@ -6,9 +6,9 @@ export default async function PapersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs opacity-60">
-        Il feed arXiv non ha punteggi: ordinando per punti finisce sotto i
-        paper HF, che invece hanno gli upvote. Con l&apos;accesso le categorie
+      <p className="max-w-[66ch] px-1 text-sm leading-relaxed text-muted sm:px-4">
+        Il feed arXiv non ha voti: con &laquo;Più votati&raquo; finisce sotto
+        i paper HF, che invece li hanno. Con l&apos;accesso le categorie
         scelte restano salvate nell&apos;account, e i paper mostrati ricevono
         un riassunto in italiano.
       </p>

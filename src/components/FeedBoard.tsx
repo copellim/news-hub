@@ -20,6 +20,7 @@ import {
 import {
   filterByRead,
   LANE_SOURCES,
+  maxPerSource,
   sortItems,
   takePerSource,
   type Lane,
@@ -29,14 +30,18 @@ import {
 } from "@/lib/feed";
 
 const SORT_LABELS: Record<SortMode, string> = {
-  ranked: "Punti",
-  recent: "Data",
+  ranked: "Più votati",
+  discussed: "Più discussi",
+  recent: "Più recenti",
 };
 
-const READ_FILTER_LABELS: Record<ReadFilter, string> = {
-  all: "Tutti",
-  unread: "Non letti",
-  read: "Letti",
+/**
+ * Sui paper i commenti sono pochi e arXiv non ne ha: "Più discussi" darebbe
+ * una classifica di zeri.
+ */
+const LANE_SORT_MODES: Record<LaneId, readonly SortMode[]> = {
+  news: ["ranked", "discussed", "recent"],
+  papers: ["ranked", "recent"],
 };
 
 export function FeedBoard({
@@ -111,6 +116,11 @@ export function FeedBoard({
     [activeLane, perSource, readFilter, sortMode, visitedKeys],
   );
 
+  const scoreMaxBySource = useMemo(
+    () => maxPerSource(activeLane.items, "score"),
+    [activeLane],
+  );
+
   // Solo i paper visibili: riassumere quelli tagliati dalla pagina costerebbe
   // senza che nessuno li legga. Generare è riservato a chi ha fatto l'accesso.
   const paperKeys = useMemo(
@@ -126,6 +136,54 @@ export function FeedBoard({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-sm text-muted sm:border-b sm:border-rule sm:px-4">
+        <div
+          role="group"
+          aria-label="Ordinamento"
+          className="flex w-full gap-5 border-b border-rule sm:w-auto sm:border-0"
+        >
+          {LANE_SORT_MODES[laneId].map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSortMode(mode)}
+              aria-pressed={sortMode === mode}
+              className={`pt-1 pb-3 ${
+                sortMode === mode
+                  ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--color-accent)]"
+                  : "hover:text-ink"
+              }`}
+            >
+              {SORT_LABELS[mode]}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4 sm:ml-auto sm:pb-3">
+          <label className="flex items-center gap-1.5">
+            <select
+              value={perSource}
+              onChange={(event) => setPerSource(Number(event.target.value))}
+              className="rounded-md border border-tag-line bg-white px-1.5 py-1 text-ink"
+            >
+              {ITEMS_PER_SOURCE_OPTIONS.map((option: number) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            per fonte
+          </label>
+
+          <UnreadOnlySwitch
+            isOn={readFilter === "unread"}
+            onChange={(isOn) => setReadFilter(isOn ? "unread" : "all")}
+          />
+
+          {isBusy && <span aria-live="polite">carico…</span>}
+        </div>
+      </div>
+
       {hasCategoryFilter && (
         <ArxivCategoryFilter
           selected={categories}
@@ -134,73 +192,44 @@ export function FeedBoard({
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <fieldset className="flex items-center gap-1">
-          <legend className="sr-only">Ordinamento</legend>
-          <span className="opacity-60">Ordina per</span>
-          {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setSortMode(mode)}
-              aria-pressed={sortMode === mode}
-              className={
-                sortMode === mode
-                  ? "rounded bg-foreground px-2 py-1 font-medium text-background"
-                  : "rounded border border-black/15 px-2 py-1 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-              }
-            >
-              {SORT_LABELS[mode]}
-            </button>
-          ))}
-        </fieldset>
-
-        <fieldset className="flex items-center gap-1">
-          <legend className="sr-only">Filtro lettura</legend>
-          <span className="opacity-60">Mostra</span>
-          {(Object.keys(READ_FILTER_LABELS) as ReadFilter[]).map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setReadFilter(filter)}
-              aria-pressed={readFilter === filter}
-              className={
-                readFilter === filter
-                  ? "rounded bg-foreground px-2 py-1 font-medium text-background"
-                  : "rounded border border-black/15 px-2 py-1 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-              }
-            >
-              {READ_FILTER_LABELS[filter]}
-            </button>
-          ))}
-        </fieldset>
-
-        <label className="flex items-center gap-1">
-          <span className="opacity-60">Per fonte</span>
-          <select
-            value={perSource}
-            onChange={(event) => setPerSource(Number(event.target.value))}
-            className="rounded border border-black/15 bg-transparent px-2 py-1 dark:border-white/20"
-          >
-            {ITEMS_PER_SOURCE_OPTIONS.map((option: number) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <span className="opacity-60">
-          {isBusy ? "carico…" : `${visible.items.length} di ${activeLane.items.length}`}
-        </span>
-      </div>
-
       <FeedList
         lane={visible}
         emptyLabel={emptyLabel}
         summaries={summaries}
         pendingSummaryKeys={pendingKeys}
+        scoreMaxBySource={scoreMaxBySource}
+        groupByAge={laneId === "news"}
       />
     </div>
+  );
+}
+
+function UnreadOnlySwitch({
+  isOn,
+  onChange,
+}: {
+  isOn: boolean;
+  onChange: (isOn: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2">
+      Solo non letti
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isOn}
+        onClick={() => onChange(!isOn)}
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+          isOn ? "bg-accent" : "bg-[#C9CED3]"
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`absolute top-0.5 size-4 rounded-full bg-white transition-[left] motion-reduce:transition-none ${
+            isOn ? "left-4.5" : "left-0.5"
+          }`}
+        />
+      </button>
+    </label>
   );
 }

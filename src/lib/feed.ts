@@ -45,9 +45,9 @@ export type Lane = {
   failures: SourceFailure[];
 };
 
-export type SortMode = "ranked" | "recent";
+export type SortMode = "ranked" | "discussed" | "recent";
 
-export type ReadFilter = "all" | "unread" | "read";
+export type ReadFilter = "all" | "unread";
 
 export function filterByRead(
   items: FeedItem[],
@@ -57,8 +57,7 @@ export function filterByRead(
   if (filter === "all") {
     return items;
   }
-  const wantVisited = filter === "read";
-  return items.filter((item) => visitedKeys.has(item.key) === wantVisited);
+  return items.filter((item) => !visitedKeys.has(item.key));
 }
 
 export const LANE_SOURCES: Record<LaneId, readonly SourceId[]> = {
@@ -87,7 +86,14 @@ export function takePerSource(
 }
 
 export function sortItems(items: FeedItem[], mode: SortMode): FeedItem[] {
-  return mode === "recent" ? sortByPublishedAtDesc(items) : sortByRank(items);
+  switch (mode) {
+    case "recent":
+      return sortByPublishedAtDesc(items);
+    case "discussed":
+      return sortByShareOfSourceMax(items, "commentCount");
+    case "ranked":
+      return sortByShareOfSourceMax(items, "score");
+  }
 }
 
 function sortByPublishedAtDesc(items: FeedItem[]): FeedItem[] {
@@ -96,51 +102,65 @@ function sortByPublishedAtDesc(items: FeedItem[]): FeedItem[] {
   );
 }
 
+/** Le due grandezze che si confrontano fra fonti, sempre in rapporto al massimo. */
+export type SourceMetric = "score" | "commentCount";
+
 /**
  * Gli score grezzi non sono confrontabili tra fonti (1297 punti HN contro 47 di
  * Lobsters), ma il rapporto con il massimo della propria fonte sì: normalizza a
- * [0,1] e ordina su quello. A parità vince il più recente.
+ * [0,1] e ordina su quello. A parità vince il più recente. Lo stesso vale per i
+ * commenti: 600 su HN sono tanti quanto 60 su Lobsters.
  *
  * Non si può usare la posizione nativa della fonte come classifica: l'ordine di
  * `huggingface.co/api/daily_papers` non è per upvote, quindi darebbe un ranking
  * finto. Le fonti senza punteggio (arXiv) finiscono in fondo, ordinate per data.
  */
-function sortByRank(items: FeedItem[]): FeedItem[] {
-  const maxBySource = maxScorePerSource(items);
+function sortByShareOfSourceMax(
+  items: FeedItem[],
+  metric: SourceMetric,
+): FeedItem[] {
+  const maxBySource = maxPerSource(items, metric);
 
   return [...items].sort(
     (a, b) =>
-      normalizedScore(b, maxBySource) - normalizedScore(a, maxBySource) ||
+      shareOfSourceMax(b, metric, maxBySource) -
+        shareOfSourceMax(a, metric, maxBySource) ||
       Date.parse(b.publishedAt) - Date.parse(a.publishedAt),
   );
 }
 
-function maxScorePerSource(items: FeedItem[]): Map<SourceId, number> {
+export function maxPerSource(
+  items: FeedItem[],
+  metric: SourceMetric,
+): Map<SourceId, number> {
   const maxBySource = new Map<SourceId, number>();
   for (const item of items) {
+    const value = item[metric];
     // `typeof` e non `!== null`: un solo score `undefined` renderebbe NaN il
     // massimo della fonte, e con NaN l'intera fonte scivolerebbe in fondo.
-    if (typeof item.score !== "number") {
+    if (typeof value !== "number") {
       continue;
     }
     maxBySource.set(
       item.source,
-      Math.max(maxBySource.get(item.source) ?? 0, item.score),
+      Math.max(maxBySource.get(item.source) ?? 0, value),
     );
   }
   return maxBySource;
 }
 
-/** -1 = fonte senza punteggio: sotto qualunque item che un punteggio ce l'ha. */
-function normalizedScore(
+/** -1 = valore assente: sotto qualunque item che il valore ce l'ha. */
+export function shareOfSourceMax(
   item: FeedItem,
-  maxBySource: Map<SourceId, number>,
+  metric: SourceMetric,
+  maxBySource: ReadonlyMap<SourceId, number>,
 ): number {
+  const value = item[metric];
   const max = maxBySource.get(item.source);
-  if (typeof item.score !== "number" || !max) {
+  if (typeof value !== "number" || !max) {
     return -1;
   }
-  return item.score / max;
+  return value / max;
 }
 
 export function dedupeByKey(items: FeedItem[]): FeedItem[] {

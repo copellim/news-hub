@@ -16,7 +16,7 @@ export function ReadingQueueBoard() {
 
   if (status !== "ready") {
     return (
-      <p className="py-8 text-center text-sm opacity-60">
+      <p className="py-10 text-center text-muted">
         {STATUS_MESSAGES[status]}
       </p>
     );
@@ -24,14 +24,14 @@ export function ReadingQueueBoard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <span className="text-xs opacity-60">
+      <span className="px-1 text-sm text-muted sm:px-4">
         {bookmarks.length} {bookmarks.length === 1 ? "articolo" : "articoli"} da
         leggere
       </span>
 
       <FeedList
         lane={{ items: bookmarks, failures: [] }}
-        emptyLabel="Nessun articolo: usa la stella accanto a un titolo per salvarlo qui."
+        emptyLabel="Nessun articolo: usa il segnalibro accanto a un titolo per salvarlo qui."
         rowAction={(item) => (
           <MarkAsReadButton item={item} onMarkAsRead={removeBookmark} />
         )}
@@ -52,7 +52,7 @@ function MarkAsReadButton({
       type="button"
       onClick={() => onMarkAsRead(item.key)}
       aria-label={`Segna come letto: ${item.title}`}
-      className="h-fit shrink-0 self-center rounded border border-black/15 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+      className="h-11 shrink-0 rounded-md px-3 text-sm font-semibold text-accent hover:bg-chip"
     >
       Letto
     </button>

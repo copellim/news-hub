@@ -75,8 +75,10 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 - **Ranking per punteggio normalizzato sul massimo della propria fonte.** 1551
   punti HN e 163 di Lobsters non sono la stessa unità, ma il rapporto con il
   massimo della fonte sì: `score / max(fonte)` in [0,1], a parità vince il più
-  recente. `sortByRank` in `src/lib/feed.ts`. Le fonti senza punteggio (arXiv)
-  valgono -1 e finiscono in fondo, ordinate per data.
+  recente. `sortByShareOfSourceMax` in `src/lib/feed.ts`, usato anche per
+  "Più discussi" sui commenti. Le fonti senza punteggio (arXiv) valgono -1 e
+  finiscono in fondo, ordinate per data. La barretta e le etichette "In cima a"
+  della riga usano lo stesso rapporto, sul massimo dell'intera corsia.
   **Non** usare la posizione nativa della fonte come classifica: l'ordine di
   `daily_papers` di HF non è per upvote (verificato), darebbe un ranking finto.
 - **Gli score assenti sono `null`, mai `undefined`.** Algolia omette `points` su
@@ -240,8 +242,16 @@ l'ultima e rimettere dati vecchi.
 ## Letto / non letto
 
 Un click sul titolo **o sul link ai commenti** segna l'articolo come visitato —
-entrambi significano "l'ho aperto". Il titolo sbiadisce, compare il chip
-"letto", e il filtro `Tutti / Non letti / Letti` lavora su questo.
+entrambi significano "l'ho aperto". Il titolo diventa grigio, nella riga compare
+"letto", e l'interruttore "Solo non letti" lavora su questo.
+
+## Età relative
+
+"16 ore fa", la fascia "Ultime 24 ore" e l'etichetta "Nuovo" dipendono dall'ora
+corrente, quindi esistono solo dopo il montaggio (`useNow` in `src/lib/now.ts`,
+`null` sul server). La pagina è prerenderizzata e servita dalla cache: un'età
+calcolata nel render sarebbe congelata e darebbe un mismatch di idratazione.
+Prima del montaggio la riga mostra la data assoluta.
 
 Nel `FeedBoard` l'ordine è **ordina → filtra per letto → taglia per fonte**: se
 si tagliasse prima, ogni fonte sprecherebbe le sue N posizioni su articoli che

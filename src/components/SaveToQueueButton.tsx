@@ -3,8 +3,8 @@
 import type { FeedItem } from "@/lib/feed";
 import { useBookmarks, useSettingsStatus } from "@/lib/settings";
 
-/** Larghezza dell'icona: il posto resta riservato mentre lo stato arriva. */
-const STAR_SIZE = 18;
+/** Area di tocco minima consigliata su mobile: l'icona da sola è 20 px. */
+const TOUCH_TARGET_CLASS = "size-11 shrink-0";
 
 export function SaveToQueueButton({ item }: { item: FeedItem }) {
   const { bookmarkedKeys, toggleBookmark } = useBookmarks();
@@ -16,7 +16,8 @@ export function SaveToQueueButton({ item }: { item: FeedItem }) {
     return null;
   }
   if (status === "loading") {
-    return <span aria-hidden className="shrink-0" style={{ width: STAR_SIZE }} />;
+    // Il posto resta riservato mentre lo stato arriva.
+    return <span aria-hidden className={TOUCH_TARGET_CLASS} />;
   }
 
   return (
@@ -30,30 +31,28 @@ export function SaveToQueueButton({ item }: { item: FeedItem }) {
           ? `Togli dai segnalibri: ${item.title}`
           : `Salva per dopo: ${item.title}`
       }
-      className={
-        isSaved
-          ? "shrink-0 text-amber-500"
-          : "shrink-0 opacity-30 hover:opacity-70"
-      }
+      className={`${TOUCH_TARGET_CLASS} flex items-center justify-center rounded-md ${
+        isSaved ? "text-accent" : "text-faint hover:text-ink"
+      }`}
     >
-      <StarIcon filled={isSaved} />
+      <BookmarkIcon filled={isSaved} />
     </button>
   );
 }
 
-function StarIcon({ filled }: { filled: boolean }) {
+function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      width={STAR_SIZE}
-      height={STAR_SIZE}
+      width={20}
+      height={20}
       fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.6"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />
+      <path d="M6 3.5h12v17l-6-4-6 4z" />
     </svg>
   );
 }
