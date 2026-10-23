@@ -3,7 +3,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 
 import { SOURCE_FETCH_LIMIT, USER_AGENT } from "@/lib/config";
-import type { FeedItem } from "@/lib/feed";
+import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson, SourceError } from "./http";
 
 /**
@@ -40,12 +40,13 @@ export function hasRedditCredentials(): boolean {
   );
 }
 
-export async function getRedditItems(): Promise<FeedItem[]> {
+export async function getRedditSnapshot(): Promise<SourceSnapshot> {
   "use cache";
   cacheLife("minutes");
 
+  const fetchedAt = new Date().toISOString();
   if (!hasRedditCredentials()) {
-    return [];
+    return { items: [], fetchedAt };
   }
 
   const token = await requestAccessToken();
@@ -53,11 +54,14 @@ export async function getRedditItems(): Promise<FeedItem[]> {
     authorization: `Bearer ${token}`,
   });
 
-  return listing.data.children.map((child) => toFeedItem(child.data));
+  return {
+    items: listing.data.children.map((child) => toFeedItem(child.data)),
+    fetchedAt,
+  };
 }
 
 /**
- * Nessuna cache del token: questa funzione gira dentro `getRedditItems`, già
+ * Nessuna cache del token: questa funzione gira dentro `getRedditSnapshot`, già
  * cachata a minuti, quindi vale ~1 richiesta ogni 5 minuti — sotto ogni limite.
  */
 async function requestAccessToken(): Promise<string> {

@@ -8,11 +8,14 @@ import { useVisitedItems } from "@/lib/settings";
 import {
   hostnameOf,
   LANE_SOURCES,
-  shareOfSourceMax,
   SOURCE_LABELS,
+  topShareOf,
   type FeedItem,
   type Lane,
   type SourceId,
+  type SourceMetric,
+  type SourcePlace,
+  type SourceRanking,
 } from "@/lib/feed";
 
 const SOURCE_COLORS: Record<SourceId, string> = {
@@ -44,8 +47,8 @@ const NEW_WITHIN_HOURS: Record<SourceId, number> = {
   arxiv: 36,
 };
 
-/** Da questa quota del massimo della fonte in su l'item è "In cima". */
-const TOP_SHARE = 0.7;
+/** Nel primo 10% della propria fonte l'item è "In cima". */
+const TOP_FRACTION = 0.1;
 
 /**
  * Una discussione è accesa quando i commenti arrivano ad almeno il 60% dei
@@ -83,10 +86,11 @@ export function FeedList({
   rowAction,
   summaries = NO_SUMMARIES,
   pendingSummaryKeys = NO_PENDING_KEYS,
-  scoreMaxBySource,
+  rankings,
+  barMetric = "score",
   groupByAge = false,
 }: {
-  lane: Lane;
+  lane: Pick<Lane, "items" | "failures">;
   emptyLabel: string;
   /** Azione extra accanto al segnalibro, es. "Letto" nella coda. */
   rowAction?: (item: FeedItem) => ReactNode;
@@ -95,11 +99,13 @@ export function FeedList({
   /** Paper il cui riassunto si sta generando adesso. */
   pendingSummaryKeys?: ReadonlySet<string>;
   /**
-   * Massimo dei punti per fonte nell'intera corsia, non solo fra le righe
-   * visibili: la barretta e "In cima a" restano stabili cambiando filtri.
-   * Senza, la riga mostra i punti e basta.
+   * Posizione di ogni item nella propria fonte, calcolata su tutta la corsia e
+   * non solo sulle righe visibili: barretta e "In cima a" restano stabili
+   * cambiando i filtri. Senza, la riga mostra i numeri e basta.
    */
-  scoreMaxBySource?: ReadonlyMap<SourceId, number>;
+  rankings?: Record<SourceMetric, SourceRanking>;
+  /** Cosa misura la barretta: lo stesso criterio dell'ordinamento scelto. */
+  barMetric?: SourceMetric;
   /** Divide in "Ultime 24 ore" e "Prima", mantenendo l'ordine scelto. */
   groupByAge?: boolean;
 }) {
@@ -146,11 +152,8 @@ export function FeedList({
                     action={rowAction?.(item)}
                     summary={summaries.get(item.key) ?? null}
                     isSummaryPending={pendingSummaryKeys.has(item.key)}
-                    scoreShare={
-                      scoreMaxBySource
-                        ? shareOfSourceMax(item, "score", scoreMaxBySource)
-                        : null
-                    }
+                    scorePlace={rankings?.score.get(item.key) ?? null}
+                    bar={barOf(item, rankings, barMetric)}
                     now={now}
                   />
                 ))}
@@ -160,6 +163,15 @@ export function FeedList({
       )}
     </div>
   );
+}
+
+function barOf(
+  item: FeedItem,
+  rankings: Record<SourceMetric, SourceRanking> | undefined,
+  metric: SourceMetric,
+): PlaceBarValue | null {
+  const place = rankings?.[metric].get(item.key);
+  return place ? { metric, place } : null;
 }
 
 function groupsByAge(items: FeedItem[], now: number): ItemGroup[] {
@@ -178,7 +190,8 @@ function FeedRow({
   action,
   summary,
   isSummaryPending,
-  scoreShare,
+  scorePlace,
+  bar,
   now,
 }: {
   item: FeedItem;
@@ -187,11 +200,13 @@ function FeedRow({
   action: ReactNode;
   summary: string | null;
   isSummaryPending: boolean;
-  /** Quota del massimo della fonte in [0,1], -1 senza punti, null se ignota. */
-  scoreShare: number | null;
+  /** Posizione per punti nella fonte; null senza punti o senza classifica. */
+  scorePlace: SourcePlace | null;
+  /** Barretta del criterio di ordinamento; null dove non c'è classifica. */
+  bar: PlaceBarValue | null;
   now: number | null;
 }) {
-  const signals = signalsOf(item, scoreShare, now);
+  const signals = signalsOf(item, scorePlace, now);
   const hasLabels = signals.length > 0 || item.tags.length > 0;
 
   return (
@@ -248,7 +263,7 @@ function FeedRow({
         </div>
       )}
 
-      <Stats item={item} scoreShare={scoreShare} onVisit={onVisit} />
+      <Stats item={item} bar={bar} onVisit={onVisit} />
 
       <div className="mt-3 flex items-center justify-end border-t border-rule pr-1 [grid-area:actions] sm:-mt-2.5 sm:-mr-2.5 sm:ml-3 sm:items-start sm:self-start sm:border-0 sm:pr-0">
         <SaveToQueueButton item={item} />
@@ -297,23 +312,26 @@ function Summary({ text }: { text: string }) {
 
 function Stats({
   item,
-  scoreShare,
+  bar,
   onVisit,
 }: {
   item: FeedItem;
-  scoreShare: number | null;
+  bar: PlaceBarValue | null;
   onVisit: (key: string) => void;
 }) {
   const isHeated = isHeatedDiscussion(item);
   const scoreUnit = LANE_SOURCES.papers.includes(item.source) ? "voti" : "punti";
+  // La barretta sta accanto al numero che decide l'ordine.
+  const barFor = (metric: SourceMetric) =>
+    bar?.metric === metric ? (
+      <PlaceBar value={bar} source={item.source} />
+    ) : null;
 
   return (
     <div className="mt-3 flex min-h-11 items-center gap-x-3 border-t border-rule pl-4 text-sm whitespace-nowrap text-muted [grid-area:stats] sm:mt-2.5 sm:mr-3 sm:min-h-6 sm:self-start sm:border-0 sm:pl-0">
       {typeof item.score === "number" ? (
-        <span className="inline-flex items-center gap-2">
-          {scoreShare !== null && scoreShare >= 0 && (
-            <HeatBar share={scoreShare} source={item.source} />
-          )}
+        <span className="inline-flex items-center gap-3">
+          {barFor("score")}
           <span>
             <span className="font-bold text-ink tabular-nums">{item.score}</span>{" "}
             {scoreUnit}
@@ -323,17 +341,20 @@ function Stats({
         <span>senza voti</span>
       )}
       {item.discussionUrl && (
-        <a
-          href={item.discussionUrl}
-          target="_blank"
-          rel="noreferrer"
-          onClick={() => onVisit(item.key)}
-          className={`tabular-nums underline-offset-[3px] hover:underline ${
-            isHeated ? "font-bold text-ink" : ""
-          }`}
-        >
-          {commentsLabel(item.commentCount ?? 0)}
-        </a>
+        <span className="inline-flex items-center gap-3">
+          {barFor("commentCount")}
+          <a
+            href={item.discussionUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => onVisit(item.key)}
+            className={`tabular-nums underline-offset-[3px] hover:underline ${
+              isHeated || bar?.metric === "commentCount" ? "font-bold text-ink" : ""
+            }`}
+          >
+            {commentsLabel(item.commentCount ?? 0)}
+          </a>
+        </span>
       )}
     </div>
   );
@@ -343,34 +364,54 @@ function commentsLabel(count: number): string {
   return count === 1 ? "1 commento" : `${count} commenti`;
 }
 
-/** Quanto l'item si avvicina al più votato della sua fonte. */
-function HeatBar({ share, source }: { share: number; source: SourceId }) {
-  const percent = Math.round(share * 100);
+type PlaceBarValue = { metric: SourceMetric; place: SourcePlace };
+
+const PLACE_BAR_CRITERION: Record<SourceMetric, string> = {
+  score: "per voti",
+  commentCount: "per commenti",
+};
+
+/**
+ * Dove sta l'item nella sua fonte sul criterio scelto: la barretta è piena per
+ * il primo, e il "top 4%" dice in chiaro il numero su cui la lista è ordinata.
+ * I punti grezzi saltano fra una fonte e l'altra, questo no.
+ */
+function PlaceBar({ value, source }: { value: PlaceBarValue; source: SourceId }) {
+  const { position, outOf } = value.place;
+  const topPercent = Math.ceil((position / outOf) * 100);
+  const description = `${position}° su ${outOf} di ${SOURCE_LABELS[source]} ${PLACE_BAR_CRITERION[value.metric]}`;
   return (
-    <span
-      role="img"
-      aria-label={`${percent}% del più votato di ${SOURCE_LABELS[source]}`}
-      title={`${percent}% del più votato di ${SOURCE_LABELS[source]}`}
-      className="block h-1 w-12 overflow-hidden rounded-full bg-accent-track"
-    >
+    <span className="inline-flex items-center gap-2" title={description}>
       <span
-        className="block h-full rounded-full bg-accent"
-        style={{ width: `${percent}%` }}
-      />
+        aria-hidden
+        className="block h-1 w-12 overflow-hidden rounded-full bg-accent-track"
+      >
+        <span
+          className="block h-full rounded-full bg-accent"
+          style={{ width: `${Math.round(topShareOf(value.place) * 100)}%` }}
+        />
+      </span>
+      <span className="tabular-nums">
+        <span className="sr-only">{description}, </span>
+        <span aria-hidden>top {topPercent}%</span>
+      </span>
     </span>
   );
 }
 
 function signalsOf(
   item: FeedItem,
-  scoreShare: number | null,
+  scorePlace: SourcePlace | null,
   now: number | null,
 ): string[] {
   const signals: string[] = [];
   const sourceName = SOURCE_SHORT_LABELS[item.source];
-  if (scoreShare === 1) {
+  if (scorePlace?.position === 1) {
     signals.push(`Il più votato su ${sourceName}`);
-  } else if (scoreShare !== null && scoreShare >= TOP_SHARE) {
+  } else if (
+    scorePlace &&
+    scorePlace.position / scorePlace.outOf <= TOP_FRACTION
+  ) {
     signals.push(`In cima a ${sourceName}`);
   }
   if (isHeatedDiscussion(item)) {

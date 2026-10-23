@@ -3,7 +3,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 
 import { SOURCE_FETCH_LIMIT } from "@/lib/config";
-import type { FeedItem } from "@/lib/feed";
+import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson } from "./http";
 
 const HOTTEST_URL = "https://lobste.rs/hottest.json";
@@ -20,12 +20,15 @@ type LobstersStory = {
   tags: string[];
 };
 
-export async function getLobstersItems(): Promise<FeedItem[]> {
+export async function getLobstersSnapshot(): Promise<SourceSnapshot> {
   "use cache";
   cacheLife("minutes");
 
   const stories = await fetchJson<LobstersStory[]>("lobsters", HOTTEST_URL);
-  return stories.slice(0, SOURCE_FETCH_LIMIT).map(toFeedItem);
+  return {
+    items: stories.slice(0, SOURCE_FETCH_LIMIT).map(toFeedItem),
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
 function toFeedItem(story: LobstersStory): FeedItem {

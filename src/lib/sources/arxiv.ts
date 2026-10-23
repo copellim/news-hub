@@ -4,7 +4,7 @@ import { XMLParser } from "fast-xml-parser";
 import { cacheLife } from "next/cache";
 
 import { isKnownArxivCategory, SOURCE_FETCH_LIMIT } from "@/lib/config";
-import { dedupeByKey, type FeedItem } from "@/lib/feed";
+import { dedupeByKey, type FeedItem, type SourceSnapshot } from "@/lib/feed";
 import { fetchText } from "./http";
 
 /**
@@ -43,49 +43,72 @@ type ArxivEntry = {
   abstract: string;
 };
 
+type CategoryFeed = { entries: ArxivEntry[]; fetchedAt: string };
+
 /**
  * Cache **per categoria**: la chiave è la sola categoria, così cambiare
  * selezione riusa i feed già scaricati invece di rifare le richieste. I feed
- * cambiano una volta al giorno.
+ * cambiano una volta al giorno, ma `hours` e non `days`: con `days` un feed
+ * scaricato poco prima dell'aggiornamento di mezzanotte ET resterebbe in pagina
+ * per un altro giorno intero.
  */
-async function getCategoryEntries(category: string): Promise<ArxivEntry[]> {
+async function getCategoryFeed(category: string): Promise<CategoryFeed> {
   "use cache";
-  cacheLife("days");
+  cacheLife("hours");
 
-  return fetchCategory(category);
+  return {
+    entries: await fetchCategory(category),
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
-export async function getArxivItems(
+export async function getArxivSnapshot(
   categories: readonly string[],
-): Promise<FeedItem[]> {
-  const entries = await getArxivEntries(categories);
-  // Le categorie si sovrappongono: lo stesso paper esce su cs.AI e cs.LG.
-  return dedupeByKey(entries.map((entry) => entry.item)).slice(
-    0,
-    SOURCE_FETCH_LIMIT,
-  );
+): Promise<SourceSnapshot> {
+  const feeds = await getCategoryFeeds(categories);
+  const entries = feeds.flatMap((feed) => feed.entries);
+  return {
+    // Le categorie si sovrappongono: lo stesso paper esce su cs.AI e cs.LG.
+    items: dedupeByKey(entries.map((entry) => entry.item)).slice(
+      0,
+      SOURCE_FETCH_LIMIT,
+    ),
+    fetchedAt: oldestFetchOf(feeds),
+  };
 }
 
 /** Titolo e abstract per chiave, dagli stessi feed in cache che riempiono la pagina. */
 export async function getArxivTexts(
   categories: readonly string[],
 ): Promise<Map<string, { title: string; abstract: string }>> {
-  const entries = await getArxivEntries(categories);
+  const feeds = await getCategoryFeeds(categories);
   return new Map(
-    entries.map(({ item, abstract }) => [
-      item.key,
-      { title: item.title, abstract },
-    ]),
+    feeds
+      .flatMap((feed) => feed.entries)
+      .map(({ item, abstract }) => [item.key, { title: item.title, abstract }]),
   );
 }
 
-async function getArxivEntries(
+async function getCategoryFeeds(
   categories: readonly string[],
-): Promise<ArxivEntry[]> {
+): Promise<CategoryFeed[]> {
   // Seconda barriera oltre a quella della Server Action: la categoria finisce
   // in un URL, e questa funzione è raggiungibile anche da altri chiamanti.
   const allowed = categories.filter(isKnownArxivCategory);
-  return (await Promise.all(allowed.map(getCategoryEntries))).flat();
+  return Promise.all(allowed.map(getCategoryFeed));
+}
+
+/**
+ * La fonte è vecchia quanto la sua categoria più vecchia. Senza categorie non
+ * c'è niente di vecchio: vale adesso.
+ */
+function oldestFetchOf(feeds: CategoryFeed[]): string {
+  if (feeds.length === 0) {
+    return new Date().toISOString();
+  }
+  return feeds
+    .map((feed) => feed.fetchedAt)
+    .reduce((oldest, fetchedAt) => (fetchedAt < oldest ? fetchedAt : oldest));
 }
 
 async function fetchCategory(category: string): Promise<ArxivEntry[]> {

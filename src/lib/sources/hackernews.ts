@@ -3,7 +3,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 
 import { SOURCE_FETCH_LIMIT } from "@/lib/config";
-import type { FeedItem } from "@/lib/feed";
+import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson } from "./http";
 
 /**
@@ -23,7 +23,7 @@ type AlgoliaStory = {
   created_at: string;
 };
 
-export async function getHackerNewsItems(): Promise<FeedItem[]> {
+export async function getHackerNewsSnapshot(): Promise<SourceSnapshot> {
   "use cache";
   cacheLife("minutes");
 
@@ -32,7 +32,10 @@ export async function getHackerNewsItems(): Promise<FeedItem[]> {
     FRONT_PAGE_URL,
   );
 
-  return hits.filter((hit) => hit.title).map(toFeedItem);
+  return {
+    items: hits.filter((hit) => hit.title).map(toFeedItem),
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
 function toFeedItem(hit: AlgoliaStory): FeedItem {

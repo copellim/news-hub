@@ -15,6 +15,7 @@
   --color-card-line: var(--card-line);
   --color-tag-line: var(--tag-line);
   --color-accent: var(--accent);
+  --color-nav-surface: var(--nav-surface);
   --color-on-accent: var(--on-accent);
   --color-accent-track: var(--accent-track);
   --color-chip: var(--chip);
@@ -92,6 +93,52 @@
     --src-huggingface: #e0b44c;
     --src-arxiv: #6cc488;
   }
+}
+
+/*
+ * Ogni sezione ha il suo accento: stessa luminosità e saturazione, cambia solo
+ * la tinta, così le pagine si riconoscono senza smettere di sembrare la stessa
+ * app. Niente arancio né ocra: si confonderebbero con le etichette di HN e HF.
+ * L'attributo sta sul contenuto della pagina e sulla navbar, entrambi già
+ * giusti nel render del server: nessun lampo di colore al caricamento.
+ */
+[data-section="papers"] {
+  --accent: #4a54c4;
+  --accent-track: #e0e2f7;
+  --chip: #e8e9fa;
+  --chip-ink: #3a41a3;
+}
+
+[data-section="queue"] {
+  --accent: #8a3f8f;
+  --accent-track: #f0e0f1;
+  --chip: #f5e8f5;
+  --chip-ink: #71317a;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-section="papers"] {
+    --accent: #9aa2f5;
+    --accent-track: #2b2f55;
+    --chip: #23264a;
+    --chip-ink: #c0c5fa;
+  }
+
+  [data-section="queue"] {
+    --accent: #d595d8;
+    --accent-track: #47294c;
+    --chip: #3a2240;
+    --chip-ink: #ecc2ee;
+  }
+}
+
+/*
+ * Il fondo della navbar mobile prende un velo dell'accento della sezione.
+ * Va calcolato qui, sull'elemento che ridefinisce `--accent`: una variabile
+ * dichiarata su `:root` resterebbe legata all'accento di `:root`.
+ */
+[data-section] {
+  --nav-surface: color-mix(in oklab, var(--surface) 94%, var(--accent));
 }
 
 body {

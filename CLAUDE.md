@@ -27,9 +27,20 @@ Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4,
 |------------|-------------|--------|
 | HN, Lobsters, Reddit | `minutes` | front page che gira di continuo |
 | HF Daily   | `hours`     | selezione umana, una volta al giorno |
-| arXiv      | `days`      | il feed si aggiorna a mezzanotte ET e salta il weekend |
+| arXiv      | `hours`     | il feed si aggiorna a mezzanotte ET e salta il weekend; con `days` un feed scaricato poco prima dell'aggiornamento resterebbe un giorno intero |
 
-Non c'è più un refresh manuale: la freschezza dipende solo da questi tempi.
+Non c'è un refresh manuale, ma c'è un controllo di freschezza nel client.
+Tutte le cache sono stale-while-revalidate, pagina ISR compresa: con una o due
+persone quasi ogni visita è la prima dopo una pausa e riceve la copia vecchia
+mentre quella nuova si prepara (verificato su Vercel: `x-vercel-cache: STALE`,
+poi `HIT` con `age: 3` quattro secondi dopo). Per questo ogni fetcher
+restituisce anche `fetchedAt`, l'ora in cui ha scaricato davvero, e la corsia
+la porta in `Lane.fetchedAt`. Il `FeedBoard`, al montaggio e al ritorno sulla
+scheda, confronta l'età con `REFRESH_AFTER_MS` di `feed.ts`. Se i dati sono
+vecchi richiama `loadLane` e riprova un paio di volte a distanza di pochi
+secondi, finché non arriva la copia rigenerata. L'età si misura con l'ora del
+server restituita da `loadLane`, così un orologio del telefono sbagliato non
+fa richiedere la corsia all'infinito.
 
 **Non** usare `export const revalidate` a livello di route: in Next 16 il
 caching passa da `use cache`, e `fetch` non è più cachato di default.
@@ -72,13 +83,18 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 
 ## Decisioni da non ribaltare senza motivo
 
-- **Ranking per punteggio normalizzato sul massimo della propria fonte.** 1551
-  punti HN e 163 di Lobsters non sono la stessa unità, ma il rapporto con il
-  massimo della fonte sì: `score / max(fonte)` in [0,1], a parità vince il più
-  recente. `sortByShareOfSourceMax` in `src/lib/feed.ts`, usato anche per
-  "Più discussi" sui commenti. Le fonti senza punteggio (arXiv) valgono -1 e
-  finiscono in fondo, ordinate per data. La barretta e le etichette "In cima a"
-  della riga usano lo stesso rapporto, sul massimo dell'intera corsia.
+- **Ranking per posizione dentro la propria fonte.** 1551 punti HN e 163 di
+  Lobsters non sono la stessa unità, ma "terzo su 50 di HN" e "secondo su 25
+  di Lobsters" sì: si ordina sulla quota della fonte che l'item ha sotto di sé
+  (`rankWithinSource` e `topShareOf` in `src/lib/feed.ts`), a parità vince il
+  più recente. Vale anche per "Più discussi" sui commenti. Prima si usava il
+  rapporto con il massimo della fonte, ma un solo post virale schiacciava
+  tutti gli altri della sua fonte. Il rapporto con il totale invece è
+  scartato, perché premierebbe le fonti che restituiscono meno item. Le fonti
+  senza punteggio (arXiv) restano fuori classifica e finiscono in fondo,
+  ordinate per data. La riga mostra la barretta e "top N%", cioè il numero
+  su cui la lista è ordinata: i punti grezzi saltano fra una fonte e l'altra,
+  e senza quel numero l'ordine sembra casuale.
   **Non** usare la posizione nativa della fonte come classifica: l'ordine di
   `daily_papers` di HF non è per upvote (verificato), darebbe un ranking finto.
 - **Gli score assenti sono `null`, mai `undefined`.** Algolia omette `points` su
@@ -92,6 +108,14 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 - **Prima si ordina, poi si taglia per fonte** (`sortItems` → `takePerSource`):
   così ogni fonte contribuisce i suoi migliori N secondo il criterio scelto e
   non i primi N che ha restituito.
+- **Le fasce "Ultime 24 ore" / "Prima" solo con "Più recenti".** Su una
+  classifica la spezzerebbero: "Prima" ripartirebbe dalla cima dopo che la
+  prima fascia era scesa. La barretta misura sempre il criterio
+  dell'ordinamento scelto, punti o commenti.
+- **Il periodo filtra prima di classificare.** Sulle News "Ultime 24 ore"
+  toglie gli item più vecchi prima di `rankWithinSource`, così "i più votati
+  di oggi" si confrontano fra loro. Settimana e mese non esistono perché le
+  fonti danno solo la front page attuale: servirebbero fetcher nuovi.
 - **Dopo un caricamento client comanda quel risultato, non la prop.** La Server
   Action fa ripartire il render RSC, e quel render non conosce le categorie
   scelte in pagina: legarsi alla prop `lane` rimetterebbe i default subito dopo

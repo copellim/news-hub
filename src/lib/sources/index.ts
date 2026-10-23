@@ -8,16 +8,17 @@ import {
   type Lane,
   type LaneId,
   type SourceId,
+  type SourceSnapshot,
 } from "@/lib/feed";
-import { getArxivItems, getArxivTexts } from "./arxiv";
-import { getHackerNewsItems } from "./hackernews";
+import { getArxivSnapshot, getArxivTexts } from "./arxiv";
+import { getHackerNewsSnapshot } from "./hackernews";
 import {
-  getHuggingFaceItems,
+  getHuggingFaceSnapshot,
   getHuggingFaceTexts,
   type HuggingFaceTexts,
 } from "./huggingface";
-import { getLobstersItems } from "./lobsters";
-import { getRedditItems } from "./reddit";
+import { getLobstersSnapshot } from "./lobsters";
+import { getRedditSnapshot } from "./reddit";
 
 export type LaneOptions = {
   /** Categorie arXiv scelte in pagina; ignorate dalle altre fonti. */
@@ -31,18 +32,18 @@ const DEFAULT_OPTIONS: LaneOptions = {
 function fetcherFor(
   source: SourceId,
   options: LaneOptions,
-): () => Promise<FeedItem[]> {
+): () => Promise<SourceSnapshot> {
   switch (source) {
     case "hackernews":
-      return getHackerNewsItems;
+      return getHackerNewsSnapshot;
     case "lobsters":
-      return getLobstersItems;
+      return getLobstersSnapshot;
     case "reddit":
-      return getRedditItems;
+      return getRedditSnapshot;
     case "huggingface":
-      return getHuggingFaceItems;
+      return getHuggingFaceSnapshot;
     case "arxiv":
-      return () => getArxivItems(options.arxivCategories);
+      return () => getArxivSnapshot(options.arxivCategories);
   }
 }
 
@@ -62,10 +63,12 @@ export async function getLane(
 
   const items: FeedItem[] = [];
   const failures: Lane["failures"] = [];
+  const fetchedAt: Lane["fetchedAt"] = {};
 
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
-      items.push(...result.value);
+      items.push(...result.value.items);
+      fetchedAt[sources[index]] = result.value.fetchedAt;
       return;
     }
     // Una fonte giù non deve portarsi dietro la corsia.
@@ -75,7 +78,7 @@ export async function getLane(
     });
   });
 
-  return { items: dedupeByKey(items), failures };
+  return { items: dedupeByKey(items), failures, fetchedAt };
 }
 
 /** Quello che serve per riassumere un paper. */

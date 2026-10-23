@@ -3,7 +3,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 
 import { SOURCE_FETCH_LIMIT } from "@/lib/config";
-import type { FeedItem } from "@/lib/feed";
+import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson } from "./http";
 
 /**
@@ -39,7 +39,10 @@ export type HuggingFaceTexts = {
 
 type HuggingFaceEntry = Omit<HuggingFaceTexts, "title"> & { item: FeedItem };
 
-async function getHuggingFaceEntries(): Promise<HuggingFaceEntry[]> {
+async function getHuggingFaceEntries(): Promise<{
+  entries: HuggingFaceEntry[];
+  fetchedAt: string;
+}> {
   "use cache";
   // La selezione cambia una volta al giorno, non ha senso ripescarla ogni minuto.
   cacheLife("hours");
@@ -48,21 +51,25 @@ async function getHuggingFaceEntries(): Promise<HuggingFaceEntry[]> {
     "huggingface",
     DAILY_PAPERS_URL,
   );
-  return papers.slice(0, SOURCE_FETCH_LIMIT).map((entry) => ({
-    item: toFeedItem(entry),
-    abstract: entry.paper.summary?.trim() || null,
-    aiSummary: entry.paper.ai_summary?.trim() || null,
-  }));
+  return {
+    entries: papers.slice(0, SOURCE_FETCH_LIMIT).map((entry) => ({
+      item: toFeedItem(entry),
+      abstract: entry.paper.summary?.trim() || null,
+      aiSummary: entry.paper.ai_summary?.trim() || null,
+    })),
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
-export async function getHuggingFaceItems(): Promise<FeedItem[]> {
-  return (await getHuggingFaceEntries()).map((entry) => entry.item);
+export async function getHuggingFaceSnapshot(): Promise<SourceSnapshot> {
+  const { entries, fetchedAt } = await getHuggingFaceEntries();
+  return { items: entries.map((entry) => entry.item), fetchedAt };
 }
 
 export async function getHuggingFaceTexts(): Promise<
   Map<string, HuggingFaceTexts>
 > {
-  const entries = await getHuggingFaceEntries();
+  const { entries } = await getHuggingFaceEntries();
   return new Map(
     entries.map(({ item, abstract, aiSummary }) => [
       item.key,

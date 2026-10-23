@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { loadLane } from "@/app/actions";
 import { ArxivCategoryFilter } from "@/components/ArxivCategoryFilter";
 import { FeedList } from "@/components/FeedList";
+import { useNow } from "@/lib/now";
 import { usePaperSummaries } from "@/lib/paper-summaries";
 import {
   useArxivCategories,
@@ -18,13 +19,16 @@ import {
   ITEMS_PER_SOURCE_OPTIONS,
 } from "@/lib/config";
 import {
+  filterByPeriod,
   filterByRead,
+  isLaneStale,
   LANE_SOURCES,
-  maxPerSource,
+  rankWithinSource,
   sortItems,
   takePerSource,
   type Lane,
   type LaneId,
+  type Period,
   type ReadFilter,
   type SortMode,
 } from "@/lib/feed";
@@ -35,6 +39,22 @@ const SORT_LABELS: Record<SortMode, string> = {
   recent: "Più recenti",
 };
 
+const PERIOD_LABELS: Record<Period, string> = {
+  all: "Tutte",
+  day: "Ultime 24 ore",
+};
+
+/**
+ * Il periodo ha senso solo sulle News: i paper di HF e arXiv escono una volta
+ * al giorno e "ultime 24 ore" lascerebbe la corsia quasi vuota. Settimana e
+ * mese non ci sono perché le fonti danno solo la front page attuale, che non
+ * va oltre due o tre giorni.
+ */
+const LANE_HAS_PERIOD: Record<LaneId, boolean> = {
+  news: true,
+  papers: false,
+};
+
 /**
  * Sui paper i commenti sono pochi e arXiv non ne ha: "Più discussi" darebbe
  * una classifica di zeri.
@@ -43,6 +63,42 @@ const LANE_SORT_MODES: Record<LaneId, readonly SortMode[]> = {
   news: ["ranked", "discussed", "recent"],
   papers: ["ranked", "recent"],
 };
+
+/**
+ * Dopo un tentativo che ha restituito ancora dati vecchi (la fonte non
+ * risponde, o la cache non ha finito di rigenerarsi) non si riprova a ogni
+ * tick: si aspetta qualche minuto.
+ */
+const FRESHNESS_COOLDOWN_MS = 2 * 60_000;
+
+/**
+ * Le cache sono stale-while-revalidate: la prima richiesta dopo una pausa
+ * riceve la copia vecchia e fa partire la rigenerazione, una richiesta di
+ * pochi secondi dopo trova quella nuova (verificato su Vercel: STALE, poi HIT
+ * con age 3). Quindi se la risposta è ancora vecchia si riprova, poche volte.
+ */
+const STALE_RETRIES = 2;
+const STALE_RETRY_DELAY_MS = 4_000;
+
+/**
+ * La corsia più lo scarto fra l'orologio del server e quello del client, da
+ * sommare all'ora locale quando si misura l'età dei dati.
+ */
+async function loadFreshLane(
+  laneId: LaneId,
+  categories: readonly string[],
+): Promise<{ lane: Lane; clockOffset: number }> {
+  let next = await loadLane(laneId, categories);
+  for (
+    let attempt = 0;
+    attempt < STALE_RETRIES && isLaneStale(next.lane, next.serverNow);
+    attempt++
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, STALE_RETRY_DELAY_MS));
+    next = await loadLane(laneId, categories);
+  }
+  return { lane: next.lane, clockOffset: next.serverNow - Date.now() };
+}
 
 export function FeedBoard({
   lane,
@@ -55,6 +111,7 @@ export function FeedBoard({
 }) {
   const [sortMode, setSortMode] = useState<SortMode>("ranked");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
+  const [period, setPeriod] = useState<Period>("all");
   const [perSource, setPerSource] = useState<number>(DEFAULT_ITEMS_PER_SOURCE);
   const { categories, toggleCategory } = useArxivCategories();
   const { visitedKeys } = useVisitedItems();
@@ -78,47 +135,84 @@ export function FeedBoard({
   // prima richiesta può tornare dopo l'ultima e rimettere dati vecchi.
   const latestRequest = useRef(0);
 
+  // Una volta caricato dal client comanda quel risultato, non la prop: il
+  // render del server non conosce le categorie scelte qui.
+  const activeLane = loaded ?? lane;
+
+  // La pagina arriva dalla cache e può essere vecchia di ore: se lo è, si
+  // richiede la corsia. `now` resta null fino al montaggio e scatta anche al
+  // ritorno sulla scheda. Lo scarto d'orologio è noto dopo la prima risposta
+  // del server; prima si assume zero.
+  const now = useNow();
+  const [clockOffset, setClockOffset] = useState(0);
+  const isStale = now !== null && isLaneStale(activeLane, now + clockOffset);
+  const lastFreshnessAttempt = useRef(0);
+
   useEffect(() => {
-    if (!hasCategoryFilter || selectionKey === loadedSelection) {
+    const needsSelection = hasCategoryFilter && selectionKey !== loadedSelection;
+    const needsFreshData =
+      isStale &&
+      now !== null &&
+      now - lastFreshnessAttempt.current > FRESHNESS_COOLDOWN_MS;
+    if (!needsSelection && !needsFreshData) {
       return;
+    }
+    if (needsFreshData) {
+      lastFreshnessAttempt.current = now;
     }
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
 
     startWork(async () => {
-      const next = await loadLane(laneId, categories);
+      const next = await loadFreshLane(laneId, categories);
       if (latestRequest.current === requestId) {
-        setLoaded(next);
+        setLoaded(next.lane);
+        setClockOffset(next.clockOffset);
         setLoadedSelection(selectionKey);
       }
     });
-  }, [categories, hasCategoryFilter, laneId, loadedSelection, selectionKey]);
-
-  // Una volta caricato dal client comanda quel risultato, non la prop: il
-  // render del server non conosce le categorie scelte qui.
-  const activeLane = loaded ?? lane;
+  }, [
+    categories,
+    hasCategoryFilter,
+    isStale,
+    laneId,
+    loadedSelection,
+    now,
+    selectionKey,
+  ]);
 
   // Ordina, poi filtra per letto/non letto, poi taglia: così ogni fonte
   // contribuisce i suoi migliori N *fra quelli che restano visibili*, invece di
   // sprecare le sue N posizioni su articoli che il filtro sta per nascondere.
+  // Il periodo viene prima di tutto: "i più votati delle ultime 24 ore" si
+  // classificano fra loro, non contro quelli di ieri. L'ora entra nel calcolo
+  // solo se serve, così la lista non si ricalcola a ogni minuto per niente.
+  const periodNow = period === "day" ? now : null;
+  const periodItems = useMemo(
+    () =>
+      periodNow === null
+        ? activeLane.items
+        : filterByPeriod(activeLane.items, "day", periodNow),
+    [activeLane, periodNow],
+  );
+
   const visible = useMemo(
     () => ({
       ...activeLane,
       items: takePerSource(
-        filterByRead(
-          sortItems(activeLane.items, sortMode),
-          readFilter,
-          visitedKeys,
-        ),
+        filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys),
         perSource,
       ),
     }),
-    [activeLane, perSource, readFilter, sortMode, visitedKeys],
+    [activeLane, periodItems, perSource, readFilter, sortMode, visitedKeys],
   );
 
-  const scoreMaxBySource = useMemo(
-    () => maxPerSource(activeLane.items, "score"),
-    [activeLane],
+  const rankings = useMemo(
+    () => ({
+      score: rankWithinSource(periodItems, "score"),
+      commentCount: rankWithinSource(periodItems, "commentCount"),
+    }),
+    [periodItems],
   );
 
   // Solo i paper visibili: riassumere quelli tagliati dalla pagina costerebbe
@@ -150,7 +244,7 @@ export function FeedBoard({
               aria-pressed={sortMode === mode}
               className={`pt-1 pb-3 ${
                 sortMode === mode
-                  ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--color-accent)]"
+                  ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--accent)]"
                   : "hover:text-ink"
               }`}
             >
@@ -159,7 +253,11 @@ export function FeedBoard({
           ))}
         </div>
 
-        <div className="flex items-center gap-4 sm:ml-auto sm:pb-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:ml-auto sm:pb-3">
+          {LANE_HAS_PERIOD[laneId] && (
+            <PeriodPicker period={period} onChange={setPeriod} />
+          )}
+
           <label className="flex items-center gap-1.5">
             <select
               value={perSource}
@@ -180,7 +278,7 @@ export function FeedBoard({
             onChange={(isOn) => setReadFilter(isOn ? "unread" : "all")}
           />
 
-          {isBusy && <span aria-live="polite">carico…</span>}
+          {isBusy && <span aria-live="polite">aggiorno…</span>}
         </div>
       </div>
 
@@ -197,9 +295,44 @@ export function FeedBoard({
         emptyLabel={emptyLabel}
         summaries={summaries}
         pendingSummaryKeys={pendingKeys}
-        scoreMaxBySource={scoreMaxBySource}
-        groupByAge={laneId === "news"}
+        rankings={rankings}
+        barMetric={sortMode === "discussed" ? "commentCount" : "score"}
+        // Solo per data: con una classifica le fasce la spezzerebbero, e
+        // "Prima" ripartirebbe dal 100% dopo che "Ultime 24 ore" era scesa.
+        groupByAge={laneId === "news" && sortMode === "recent"}
       />
+    </div>
+  );
+}
+
+function PeriodPicker({
+  period,
+  onChange,
+}: {
+  period: Period;
+  onChange: (period: Period) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Periodo"
+      className="flex rounded-md border border-tag-line p-0.5"
+    >
+      {(Object.keys(PERIOD_LABELS) as Period[]).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          aria-pressed={period === option}
+          className={`rounded px-2 py-0.5 ${
+            period === option
+              ? "bg-chip font-semibold text-chip-ink"
+              : "hover:text-ink"
+          }`}
+        >
+          {PERIOD_LABELS[option]}
+        </button>
+      ))}
     </div>
   );
 }

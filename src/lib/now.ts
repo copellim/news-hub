@@ -9,20 +9,39 @@ let now: number | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 
+function tick(): void {
+  now = Date.now();
+  listeners.forEach((notify) => notify());
+}
+
+/**
+ * Su mobile una scheda in background ha i timer congelati: al ritorno l'ora va
+ * aggiornata subito, non al tick successivo, altrimenti per un minuto la pagina
+ * mostra età e dati di quando era stata lasciata.
+ */
+function tickWhenVisible(): void {
+  if (document.visibilityState === "visible") {
+    tick();
+  }
+}
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   if (!timer) {
     now = Date.now();
-    timer = setInterval(() => {
-      now = Date.now();
-      listeners.forEach((notify) => notify());
-    }, TICK_MS);
+    timer = setInterval(tick, TICK_MS);
+    document.addEventListener("visibilitychange", tickWhenVisible);
+    // Il ritorno dalla cache avanti/indietro del browser non sempre passa da
+    // `visibilitychange`.
+    window.addEventListener("pageshow", tickWhenVisible);
   }
   return () => {
     listeners.delete(listener);
     if (listeners.size === 0 && timer) {
       clearInterval(timer);
       timer = null;
+      document.removeEventListener("visibilitychange", tickWhenVisible);
+      window.removeEventListener("pageshow", tickWhenVisible);
     }
   };
 }

@@ -24,15 +24,20 @@ import {
  *
  * Non invalida la cache: i feed hanno già un `cacheLife` per fonte, e cambiare
  * una categoria non è un motivo per riscaricarli.
+ *
+ * Restituisce anche l'ora del server: l'età dei dati si misura contro questa,
+ * perché un telefono con l'orologio avanti di qualche minuto vedrebbe dati
+ * sempre vecchi e continuerebbe a richiederli.
  */
 export async function loadLane(
   lane: LaneId,
   categories: readonly string[],
-): Promise<Lane> {
-  return getLane(lane, {
+): Promise<{ lane: Lane; serverNow: number }> {
+  const loaded = await getLane(lane, {
     // Whitelist, non sanificazione: la categoria diventa parte di un URL.
     arxivCategories: categories.filter(isKnownArxivCategory),
   });
+  return { lane: loaded, serverNow: Date.now() };
 }
 
 /** Una pagina mostra al massimo 50 paper per fonte, due fonti. */
