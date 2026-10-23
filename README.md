@@ -79,9 +79,9 @@ rielaborano a ogni apertura.
 
 ## Account e impostazioni
 
-Senza accesso si leggono News e Papers con i riassunti già pronti. Con
-l'accesso Google, se l'email è in `ALLOWED_EMAILS`, compaiono stelle e letti e
-si generano i riassunti mancanti.
+Senza accesso si vedono solo le liste di News e Papers. Con l'accesso Google,
+se l'email è in `ALLOWED_EMAILS`, compaiono stelle, letti e riassunti, e si
+generano quelli mancanti.
 
 Categorie arXiv, segnalibri e articoli letti stanno in **un file JSON per
 utente** su Blob:

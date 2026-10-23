@@ -8,9 +8,10 @@ import { generatePaperSummaries, readPaperSummaries } from "@/app/actions";
 const GENERATION_BATCH_SIZE = 8;
 
 /**
- * Riassunti dei paper visibili. Prima legge quelli già pronti, poi, se
- * `canGenerate`, chiede quelli mancanti a lotti, uno dopo l'altro: così i
- * primi compaiono subito e un solo lotto alla volta riscrive il file su Blob.
+ * Riassunti dei paper visibili, solo con l'accesso: senza, le Server Action
+ * risponderebbero vuote e non si chiamano nemmeno. Prima legge quelli già
+ * pronti, poi chiede quelli mancanti a lotti, uno dopo l'altro: così i primi
+ * compaiono subito e un solo lotto alla volta riscrive il file su Blob.
  *
  * Ogni chiave si chiede una volta sola per visita, anche se la lista cambia
  * per un filtro: tornare indietro non ripete le chiamate.
@@ -18,7 +19,7 @@ const GENERATION_BATCH_SIZE = 8;
 export function usePaperSummaries(
   keys: readonly string[],
   categories: readonly string[],
-  canGenerate: boolean,
+  isSignedIn: boolean,
 ) {
   const [summaries, setSummaries] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
@@ -86,6 +87,9 @@ export function usePaperSummaries(
     }
 
     async function load() {
+      if (!isSignedIn) {
+        return;
+      }
       const unread = visibleKeys.filter((key) => !readKeys.current.has(key));
       unread.forEach((key) => readKeys.current.add(key));
       if (unread.length > 0) {
@@ -95,13 +99,11 @@ export function usePaperSummaries(
           console.error("Riassunti non letti", error);
         }
       }
-      if (canGenerate) {
-        await generateMissing();
-      }
+      await generateMissing();
     }
 
     void load();
-  }, [keysSignature, categoriesSignature, canGenerate]);
+  }, [keysSignature, categoriesSignature, isSignedIn]);
 
   return { summaries, pendingKeys };
 }

@@ -216,7 +216,8 @@ export function FeedBoard({
   );
 
   // Solo i paper visibili: riassumere quelli tagliati dalla pagina costerebbe
-  // senza che nessuno li legga. Generare è riservato a chi ha fatto l'accesso.
+  // senza che nessuno li legga. I riassunti sono riservati a chi ha fatto
+  // l'accesso, sia per leggerli sia per generarli.
   const paperKeys = useMemo(
     () =>
       laneId === "papers" ? visible.items.map((item) => item.key) : [],

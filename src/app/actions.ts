@@ -49,11 +49,15 @@ const MAX_KEYS_PER_READ = 100;
  */
 const MAX_KEYS_PER_GENERATION = 8;
 
-/** Riassunti già pronti per i paper indicati. Aperta a tutti: non costa nulla. */
+/**
+ * Riassunti già pronti per i paper indicati. Leggere non costa nulla, ma i
+ * riassunti restano una funzione di chi ha fatto l'accesso: l'app è personale e
+ * chi passa senza account vede solo le liste.
+ */
 export async function readPaperSummaries(
   keys: readonly string[],
 ): Promise<Record<string, string>> {
-  if (!isBlobConfigured()) {
+  if (!isBlobConfigured() || !(await getSignedInEmail())) {
     return {};
   }
   return currentTexts(

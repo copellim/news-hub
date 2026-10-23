@@ -166,8 +166,9 @@ tutte.
   sessione, mai dal corpo della richiesta.
 - **Le pagine restano statiche**: la sessione si legge solo nel client
   (`authClient.useSession`) e nelle route/Server Action, mai nel render.
-- Chi non ha fatto l'accesso legge News e Papers con i riassunti già pronti, ma
-  senza stelle, letti né generazione di riassunti nuovi.
+- Chi non ha fatto l'accesso vede solo le liste di News e Papers: niente
+  riassunti (né letti né generati), stelle o letti. L'app è personale e ogni
+  funzione oltre la lista resta dietro l'accesso, anche quando non costa.
 
 ## Stato dell'utente: un file per utente su Blob
 
@@ -229,9 +230,10 @@ per paper (`key`, `text`, `origin`, `model`, `promptVersion`, `createdAt`).
 - **Whitelist**: le Server Action ricevono solo chiavi, e `getPaperTexts` cerca
   i testi nei feed in cache. Una chiave che non compare nei feed non produce
   nulla, quindi nessuno può far riassumere un testo arbitrario.
-- **Leggere è aperto a tutti, generare no**: `generatePaperSummaries` richiede
-  l'accesso, perché ogni riassunto è una chiamata a pagamento (Haiku 5.5,
-  ragionamento esteso spento, ~$0,0001 a paper).
+- **Solo con l'accesso**, sia `readPaperSummaries` sia
+  `generatePaperSummaries`: ogni riassunto è una chiamata a pagamento (Haiku
+  5.5, ragionamento esteso spento, ~$0,0001 a paper), e anche leggere quelli
+  pronti resta una funzione di chi ha l'account.
 - **A lotti di 8, uno dopo l'altro** (`usePaperSummaries`): i primi compaiono in
   pochi secondi e un solo lotto alla volta riscrive il file. Prima di generare
   si rilegge il file dall'origine, così un riassunto appena salvato da un'altra
