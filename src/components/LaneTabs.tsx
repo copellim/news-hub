@@ -24,13 +24,13 @@ export function LaneTabs() {
   return (
     <>
       {activeTab && (
-        <span className="font-serif text-[26px] leading-none font-semibold sm:hidden">
+        <span className="text-[26px] leading-none font-semibold tracking-[-0.02em] sm:hidden">
           {activeTab.label}
         </span>
       )}
       <nav
         aria-label="Sezioni"
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-rule bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:z-auto sm:gap-6 sm:border-0 sm:bg-transparent sm:pb-0"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-rule bg-surface pb-[env(safe-area-inset-bottom)] sm:static sm:z-auto sm:gap-6 sm:border-0 sm:bg-transparent sm:pb-0"
       >
         {TABS.map((tab) => {
           const isActive = tab === activeTab;
@@ -39,7 +39,7 @@ export function LaneTabs() {
               key={tab.href}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex h-15 flex-1 items-center justify-center gap-1 text-[15px] font-semibold sm:h-auto sm:flex-none sm:font-serif sm:text-[28px] sm:leading-tight ${
+              className={`relative flex h-15 flex-1 items-center justify-center gap-1 text-[15px] font-semibold sm:h-auto sm:flex-none sm:text-[28px] sm:leading-tight sm:tracking-[-0.02em] ${
                 isActive
                   ? "text-ink"
                   : "text-muted hover:text-ink sm:text-faint sm:hover:text-ink"

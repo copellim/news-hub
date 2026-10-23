@@ -16,11 +16,11 @@ import {
 } from "@/lib/feed";
 
 const SOURCE_COLORS: Record<SourceId, string> = {
-  hackernews: "text-[#C2410C]",
-  lobsters: "text-[#A61E1E]",
-  reddit: "text-[#1F5FA8]",
-  huggingface: "text-[#8A5A00]",
-  arxiv: "text-[#23703A]",
+  hackernews: "text-src-hackernews",
+  lobsters: "text-src-lobsters",
+  reddit: "text-src-reddit",
+  huggingface: "text-src-huggingface",
+  arxiv: "text-src-arxiv",
 };
 
 /** Nome breve per le etichette: "Il più votato su HN". */
@@ -117,7 +117,7 @@ export function FeedList({
       {lane.failures.map((failure) => (
         <p
           key={failure.source}
-          className="rounded-lg border border-[#E8D3B0] bg-[#FBF5EA] px-4 py-3 text-sm"
+          className="rounded-lg border border-warn-line bg-warn px-4 py-3 text-sm"
         >
           <strong>{SOURCE_LABELS[failure.source]}</strong> non risponde:{" "}
           {failure.message}
@@ -195,7 +195,7 @@ function FeedRow({
   const hasLabels = signals.length > 0 || item.tags.length > 0;
 
   return (
-    <li className="feed-row rounded-xl border border-card-line bg-white sm:rounded-lg sm:border-0 sm:p-4 sm:even:bg-stripe">
+    <li className="feed-row rounded-xl border border-card-line bg-surface sm:rounded-lg sm:border-0 sm:p-4 sm:even:bg-stripe">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 pt-4 text-sm text-muted [grid-area:meta] sm:px-0 sm:pt-0">
         <span className={`font-semibold ${SOURCE_COLORS[item.source]}`}>
           {SOURCE_LABELS[item.source]}
@@ -210,7 +210,7 @@ function FeedRow({
         target="_blank"
         rel="noreferrer"
         onClick={() => onVisit(item.key)}
-        className={`mt-1.5 px-4 font-serif text-lg leading-[1.35] font-semibold text-pretty decoration-1 underline-offset-[3px] [grid-area:title] hover:underline sm:px-0 sm:text-[19px] ${
+        className={`mt-1.5 px-4 text-lg leading-[1.3] font-semibold tracking-[-0.01em] text-pretty decoration-1 underline-offset-[3px] [grid-area:title] hover:underline sm:px-0 sm:text-[19px] ${
           isVisited ? "text-muted" : "text-ink"
         }`}
       >
@@ -221,7 +221,7 @@ function FeedRow({
         <Summary text={summary} />
       ) : (
         isSummaryPending && (
-          <p className="mt-2 px-4 font-serif text-base text-muted [grid-area:summary] sm:px-0">
+          <p className="mt-2 px-4 font-serif text-[17px] text-muted [grid-area:summary] sm:px-0">
             Il riassunto si sta scrivendo.
           </p>
         )
@@ -276,7 +276,7 @@ function Summary({ text }: { text: string }) {
       {/* Su mobile il riassunto è sempre intero: è il motivo per aprire la
           corsia dal telefono, e il "leggi tutto" costerebbe un tocco in più. */}
       <p
-        className={`max-w-[66ch] font-serif text-[17px] leading-[1.65] text-pretty text-prose ${
+        className={`max-w-[66ch] font-serif text-lg leading-[1.6] text-pretty text-prose ${
           isClamped ? "sm:line-clamp-3" : ""
         }`}
       >

@@ -40,7 +40,7 @@ export function AccountMenu() {
     <div className="flex items-center gap-3 text-sm">
       {settingsStatus === "error" && (
         <span
-          className="text-[#9A4A00]"
+          className="text-warn-ink"
           title="Segnalibri e letti non sono stati caricati: vedi la console"
         >
           stato non disponibile

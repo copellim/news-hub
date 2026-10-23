@@ -1,33 +1,101 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-atkinson), system-ui, sans-serif;
-  --font-serif: var(--font-literata), Georgia, serif;
+  --font-sans: var(--font-instrument), system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
+
+  --color-surface: var(--surface);
+  --color-canvas: var(--canvas);
+  --color-stripe: var(--stripe);
+  --color-ink: var(--ink);
+  --color-prose: var(--prose);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-rule: var(--rule);
+  --color-card-line: var(--card-line);
+  --color-tag-line: var(--tag-line);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-track: var(--accent-track);
+  --color-chip: var(--chip);
+  --color-chip-ink: var(--chip-ink);
+  --color-switch-off: var(--switch-off);
+  --color-warn: var(--warn);
+  --color-warn-line: var(--warn-line);
+  --color-warn-ink: var(--warn-ink);
+  --color-src-hackernews: var(--src-hackernews);
+  --color-src-lobsters: var(--src-lobsters);
+  --color-src-reddit: var(--src-reddit);
+  --color-src-huggingface: var(--src-huggingface);
+  --color-src-arxiv: var(--src-arxiv);
 }
 
-@theme {
-  --color-ink: #1a1d21;
-  --color-prose: #2e3338;
-  --color-muted: #5d656e;
-  --color-faint: #8a929a;
-  --color-rule: #e5e8eb;
-  --color-canvas: #f2f4f5;
-  --color-stripe: #f5f7f7;
-  --color-card-line: #e3e7ea;
-  --color-tag-line: #dde1e5;
-  --color-accent: #0b7266;
-  --color-accent-track: #dcebe8;
-  --color-chip: #e3f1ef;
-  --color-chip-ink: #0a5c53;
-}
-
-/* Solo tema chiaro: lo scuro tornerà con una palette sua, non invertita. */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
+
+  --surface: #ffffff;
+  --canvas: #f2f4f5;
+  --stripe: #f5f7f7;
+  --ink: #1a1d21;
+  --prose: #2e3338;
+  --muted: #5d656e;
+  --faint: #8a929a;
+  --rule: #e5e8eb;
+  --card-line: #e3e7ea;
+  --tag-line: #dde1e5;
+  --accent: #0b7266;
+  --on-accent: #ffffff;
+  --accent-track: #dcebe8;
+  --chip: #e3f1ef;
+  --chip-ink: #0a5c53;
+  --switch-off: #c9ced3;
+  --warn: #fbf5ea;
+  --warn-line: #e8d3b0;
+  --warn-ink: #9a4a00;
+  --src-hackernews: #c2410c;
+  --src-lobsters: #a61e1e;
+  --src-reddit: #1f5fa8;
+  --src-huggingface: #8a5a00;
+  --src-arxiv: #23703a;
+}
+
+/*
+ * Tema scuro con una palette sua, non i colori chiari invertiti: fondo grafite
+ * e non nero, testo dei riassunti un gradino sotto i titoli per non abbagliare
+ * su righe lunghe, accento e colori delle fonti schiariti per restare sopra
+ * 4,5:1 sul fondo.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #14181b;
+    --canvas: #0d1012;
+    --stripe: #1a1f23;
+    --ink: #e8ecef;
+    --prose: #cdd3d8;
+    --muted: #98a1aa;
+    --faint: #6e7780;
+    --rule: #262c31;
+    --card-line: #252b30;
+    --tag-line: #343b41;
+    --accent: #4fc1af;
+    --on-accent: #0d1012;
+    --accent-track: #1f3a36;
+    --chip: #173430;
+    --chip-ink: #8fdccd;
+    --switch-off: #3a4248;
+    --warn: #2a2216;
+    --warn-line: #4d3b22;
+    --warn-ink: #e6b26a;
+    --src-hackernews: #f08a4b;
+    --src-lobsters: #f07b7b;
+    --src-reddit: #7fb0ee;
+    --src-huggingface: #e0b44c;
+    --src-arxiv: #6cc488;
+  }
 }
 
 body {
-  @apply bg-canvas text-ink sm:bg-white;
+  @apply bg-canvas text-ink sm:bg-surface;
 }
 
 /*

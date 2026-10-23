@@ -8,7 +8,7 @@ export default async function NewsPage() {
   return (
     <div className="flex flex-col gap-4">
       {!hasRedditCredentials() && (
-        <p className="mx-1 rounded-lg border border-card-line bg-white px-4 py-3 text-sm text-muted sm:mx-4">
+        <p className="mx-1 rounded-lg border border-card-line bg-surface px-4 py-3 text-sm text-muted sm:mx-4">
           <strong>r/programming è disattivata</strong>: mancano{" "}
           <code className="font-mono">REDDIT_CLIENT_ID</code> e{" "}
           <code className="font-mono">REDDIT_CLIENT_SECRET</code> in{" "}

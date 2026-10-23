@@ -164,7 +164,7 @@ export function FeedBoard({
             <select
               value={perSource}
               onChange={(event) => setPerSource(Number(event.target.value))}
-              className="rounded-md border border-tag-line bg-white px-1.5 py-1 text-ink"
+              className="rounded-md border border-tag-line bg-surface px-1.5 py-1 text-ink"
             >
               {ITEMS_PER_SOURCE_OPTIONS.map((option: number) => (
                 <option key={option} value={option}>
@@ -220,7 +220,7 @@ function UnreadOnlySwitch({
         aria-checked={isOn}
         onClick={() => onChange(!isOn)}
         className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-          isOn ? "bg-accent" : "bg-[#C9CED3]"
+          isOn ? "bg-accent" : "bg-switch-off"
         }`}
       >
         <span

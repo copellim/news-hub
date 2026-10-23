@@ -19,7 +19,7 @@ export function ArxivCategoryFilter({
   const archives = groupByArchive();
 
   return (
-    <details className="mx-1 rounded-lg border border-card-line bg-white px-4 py-3 sm:mx-4">
+    <details className="mx-1 rounded-lg border border-card-line bg-surface px-4 py-3 sm:mx-4">
       <summary className="cursor-pointer text-sm text-muted">
         <span className="font-semibold text-ink">Categorie arXiv</span>:{" "}
         {summaryOf(selected)}
@@ -43,12 +43,12 @@ export function ArxivCategoryFilter({
                     aria-pressed={isSelected}
                     className={`rounded-full border px-2.5 py-1 text-[13px] disabled:opacity-50 ${
                       isSelected
-                        ? "border-accent bg-accent text-white"
+                        ? "border-accent bg-accent text-on-accent"
                         : "border-tag-line text-ink hover:border-faint"
                     }`}
                   >
                     {category.label}{" "}
-                    <span className={isSelected ? "text-white/75" : "text-muted"}>
+                    <span className={isSelected ? "text-on-accent/75" : "text-muted"}>
                       {category.id}
                     </span>
                   </button>
