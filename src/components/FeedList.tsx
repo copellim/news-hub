@@ -78,7 +78,7 @@ const absoluteTime = new Intl.DateTimeFormat("it-IT", {
 const NO_SUMMARIES: ReadonlyMap<string, string> = new Map();
 const NO_PENDING_KEYS: ReadonlySet<string> = new Set();
 
-type ItemGroup = { label: string | null; items: FeedItem[] };
+type ItemGroup = { id: string; label: string | null; items: FeedItem[] };
 
 export function FeedList({
   lane,
@@ -89,6 +89,7 @@ export function FeedList({
   rankings,
   barMetric = "score",
   groupByAge = false,
+  groupUnscored = false,
 }: {
   lane: Pick<Lane, "items" | "failures">;
   emptyLabel: string;
@@ -108,15 +109,22 @@ export function FeedList({
   barMetric?: SourceMetric;
   /** Divide in "Ultime 24 ore" e "Prima", mantenendo l'ordine scelto. */
   groupByAge?: boolean;
+  /**
+   * Stacca in un gruppo con il suo titolo gli item senza voti, che una
+   * classifica per voti lascia in fondo nell'ordine del feed.
+   */
+  groupUnscored?: boolean;
 }) {
   // Un solo abbonamento allo store per lista, non uno per riga.
   const { visitedKeys, markVisited } = useVisitedItems();
   const now = useNow();
 
-  const groups: ItemGroup[] =
-    groupByAge && now !== null
-      ? groupsByAge(lane.items, now)
-      : [{ label: null, items: lane.items }];
+  let groups: ItemGroup[] = [{ id: "all", label: null, items: lane.items }];
+  if (groupByAge && now !== null) {
+    groups = groupsByAge(lane.items, now);
+  } else if (groupUnscored) {
+    groups = groupsByScore(lane.items);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -136,7 +144,7 @@ export function FeedList({
         groups
           .filter((group) => group.items.length > 0)
           .map((group) => (
-            <section key={group.label ?? "all"} className="flex flex-col gap-2">
+            <section key={group.id} className="flex flex-col gap-2">
               {group.label && (
                 <h2 className="px-1 text-sm font-semibold text-muted sm:px-4">
                   {group.label}
@@ -178,8 +186,29 @@ function groupsByAge(items: FeedItem[], now: number): ItemGroup[] {
   const isRecent = (item: FeedItem) =>
     hoursSince(item.publishedAt, now) < RECENT_BAND_HOURS;
   return [
-    { label: "Ultime 24 ore", items: items.filter(isRecent) },
-    { label: "Prima", items: items.filter((item) => !isRecent(item)) },
+    { id: "recent", label: "Ultime 24 ore", items: items.filter(isRecent) },
+    {
+      id: "older",
+      label: "Prima",
+      items: items.filter((item) => !isRecent(item)),
+    },
+  ];
+}
+
+/**
+ * Sui paper gli unici senza voti sono quelli di arXiv, e fra loro non c'è
+ * ordine vero: il titolo lo dice, invece di lasciarli sembrare il fondo della
+ * classifica.
+ */
+function groupsByScore(items: FeedItem[]): ItemGroup[] {
+  const isScored = (item: FeedItem) => typeof item.score === "number";
+  return [
+    { id: "scored", label: null, items: items.filter(isScored) },
+    {
+      id: "unscored",
+      label: "arXiv, senza voti, nell'ordine dell'annuncio",
+      items: items.filter((item) => !isScored(item)),
+    },
   ];
 }
 

@@ -168,7 +168,9 @@ export type SourceRanking = ReadonlyMap<string, SourcePlace>;
  *
  * Non si può usare la posizione nativa della fonte come classifica: l'ordine di
  * `huggingface.co/api/daily_papers` non è per upvote, quindi darebbe un ranking
- * finto. Le fonti senza punteggio (arXiv) finiscono in fondo, ordinate per data.
+ * finto. Le fonti senza punteggio (arXiv) finiscono in fondo. Lì la data non
+ * decide niente, perché arXiv data l'annuncio e non il paper: tutti gli item di
+ * un giorno sono pari, e l'ordinamento stabile lascia quello del feed.
  */
 function sortByPlaceInSource(
   items: FeedItem[],

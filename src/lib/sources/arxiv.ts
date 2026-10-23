@@ -66,7 +66,7 @@ export async function getArxivSnapshot(
   categories: readonly string[],
 ): Promise<SourceSnapshot> {
   const feeds = await getCategoryFeeds(categories);
-  const entries = feeds.flatMap((feed) => feed.entries);
+  const entries = interleave(feeds.map((feed) => feed.entries));
   return {
     // Le categorie si sovrappongono: lo stesso paper esce su cs.AI e cs.LG.
     items: dedupeByKey(entries.map((entry) => entry.item)).slice(
@@ -75,6 +75,24 @@ export async function getArxivSnapshot(
     ),
     fetchedAt: oldestFetchOf(feeds),
   };
+}
+
+/**
+ * Un paper a turno da ogni categoria, ciascuna nell'ordine del suo feed.
+ * Concatenando, il taglio a `SOURCE_FETCH_LIMIT` terrebbe solo la prima
+ * categoria: cs.AI da sola annuncia centinaia di paper al giorno.
+ */
+function interleave<T>(lists: T[][]): T[] {
+  const longest = Math.max(0, ...lists.map((list) => list.length));
+  const interleaved: T[] = [];
+  for (let index = 0; index < longest; index++) {
+    for (const list of lists) {
+      if (index < list.length) {
+        interleaved.push(list[index]);
+      }
+    }
+  }
+  return interleaved;
 }
 
 /** Titolo e abstract per chiave, dagli stessi feed in cache che riempiono la pagina. */

@@ -302,6 +302,7 @@ export function FeedBoard({
         // Solo per data: con una classifica le fasce la spezzerebbero, e
         // "Prima" ripartirebbe dal 100% dopo che "Ultime 24 ore" era scesa.
         groupByAge={laneId === "news" && sortMode === "recent"}
+        groupUnscored={laneId === "papers" && sortMode === "ranked"}
       />
     </div>
   );

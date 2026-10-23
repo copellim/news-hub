@@ -91,8 +91,11 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
   rapporto con il massimo della fonte, ma un solo post virale schiacciava
   tutti gli altri della sua fonte. Il rapporto con il totale invece è
   scartato, perché premierebbe le fonti che restituiscono meno item. Le fonti
-  senza punteggio (arXiv) restano fuori classifica e finiscono in fondo,
-  ordinate per data. La riga mostra la barretta e "top N%", cioè il numero
+  senza punteggio (arXiv) restano fuori classifica e finiscono in fondo, in
+  un gruppo con il suo titolo. Fra loro la data non ordina niente: arXiv data
+  l'annuncio e non il paper (nel feed di cs.AI tutti i 370 item di un giorno
+  hanno lo stesso `pubDate`), quindi resta l'ordine del feed. La riga mostra
+  la barretta e "top N%", cioè il numero
   su cui la lista è ordinata: i punti grezzi saltano fra una fonte e l'altra,
   e senza quel numero l'ordine sembra casuale.
   **Non** usare la posizione nativa della fonte come classifica: l'ordine di
@@ -244,10 +247,14 @@ per paper (`key`, `text`, `origin`, `model`, `promptVersion`, `createdAt`).
 interessano l'app — Computer Science, Statistics, EESS: 50 categorie prese da
 <https://arxiv.org/category_taxonomy>. È anche la **whitelist**: l'id arriva dal
 client e finisce in un URL, quindi è validato sia nella Server Action sia in
-`getArxivItems`. Aggiungere math/physics = aggiungere righe al catalogo.
+`getCategoryFeeds`. Aggiungere math/physics = aggiungere righe al catalogo.
 
-`getCategoryEntries` cacha **una voce per categoria**: cambiare selezione riusa i
+`getCategoryFeed` cacha **una voce per categoria**: cambiare selezione riusa i
 feed già scaricati invece di rifare le richieste.
+
+Le categorie si **alternano**, un paper a turno da ciascuna, prima del taglio a
+`SOURCE_FETCH_LIMIT`. Concatenate, il taglio teneva solo la prima: cs.AI da
+sola annuncia centinaia di paper al giorno, e cs.LG e cs.CL non comparivano.
 
 **Non c'è un pulsante di refresh: ogni modifica applica da sola.** Il render del
 server non sa chi è l'utente e usa sempre i default, quindi il `FeedBoard`
