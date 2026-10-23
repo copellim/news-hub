@@ -8,8 +8,9 @@ const BUTTON_CLASS =
   "state-layer -mr-3 h-10 rounded-full px-3 text-sm font-medium text-accent";
 
 /**
- * Accesso con Google. Le news e i paper si leggono anche senza; segnalibri,
- * letti e la generazione dei riassunti richiedono un account in allowlist.
+ * Accesso con Google. Le liste di news e paper si vedono anche senza;
+ * segnalibri, letti, riassunti e lettura diretta richiedono un account in
+ * allowlist.
  */
 export function AccountMenu() {
   const { data: session, isPending } = authClient.useSession();

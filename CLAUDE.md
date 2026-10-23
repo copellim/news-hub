@@ -5,7 +5,8 @@
 Aggregatore a uso personale, deployato su Vercel (piano Hobby). Tre pagine:
 **News** (Hacker News, Lobsters, r/programming), **Papers** (HF Daily Papers,
 arXiv filtrato, con un riassunto in italiano per paper) e **Da leggere** (coda
-di segnalibri). Login Google ristretto a un'allowlist di email; nessun
+di segnalibri). Con l'accesso, articoli e commenti si leggono in una card senza
+uscire dal portale. Login Google ristretto a un'allowlist di email; nessun
 database: le pagine sono statiche con cache per fonte, lo stato degli utenti e
 i riassunti stanno su Vercel Blob.
 
@@ -16,7 +17,10 @@ Va tenuto semplice: lo usano una o due persone. Un solo servizio di storage
 
 Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4,
 `fast-xml-parser` per l'RSS di arXiv, Better Auth (Google, stateless),
-`@vercel/blob`, `@anthropic-ai/sdk` (Claude Haiku 5.5). Package manager: pnpm.
+`@vercel/blob`, `@anthropic-ai/sdk` (Claude Haiku 5.5), `@mozilla/readability`
++ `linkedom` + `sanitize-html` per la lettura diretta. Package manager: pnpm.
+Verifiche: `pnpm typecheck`, `pnpm lint`, `pnpm test` (vitest, solo i moduli
+puri della lettura diretta, con fixture ridotte da risposte reali).
 
 ## Caching — la regola portante
 
@@ -61,18 +65,22 @@ src/lib/auth.ts             # server: Better Auth, allowlist, getSignedInEmail
 src/lib/auth-client.ts      # client: authClient di Better Auth
 src/lib/summaries/          # server: JSONL dei riassunti + generazione con Haiku
 src/lib/paper-summaries.ts  # client: usePaperSummaries
+src/lib/reader-model.ts     # client-safe: ReaderArticle, Discussion, Comment
+src/lib/reader/             # server: estrattori, adapter dei commenti, sanitizer, whitelist
+src/lib/reader-content.ts   # client: useReaderArticle, useReaderDiscussion
 src/app/actions.ts          # Server Action: loadLane, riassunti
 src/app/api/auth/[...all]/  # route di Better Auth
 src/app/api/settings/       # GET/POST dello stato dell'utente loggato
+src/app/api/reader/         # GET articolo e GET commenti per la card
 src/app/page.tsx            # corsia News
 src/app/papers/page.tsx     # corsia Papers
 src/app/da-leggere/page.tsx # coda di lettura
 ```
 
-Confine server/client: `sources/`, `summaries/`, `auth.ts`, `blob-store.ts` e
-`user-settings.ts` sono `server-only`. I tipi e le costanti che servono anche ai
-componenti stanno in `feed.ts`, `config.ts` e `settings-model.ts`, che non
-importano nulla di `node:*`.
+Confine server/client: `sources/`, `summaries/`, `reader/`, `auth.ts`,
+`blob-store.ts` e `user-settings.ts` sono `server-only`. I tipi e le costanti che
+servono anche ai componenti stanno in `feed.ts`, `config.ts`, `settings-model.ts`
+e `reader-model.ts`, che non importano nulla di `node:*`.
 
 ## Variabili d'ambiente
 
@@ -243,6 +251,58 @@ per paper (`key`, `text`, `origin`, `model`, `promptVersion`, `createdAt`).
 - **`SUMMARY_PROMPT_VERSION`**: alzarlo fa rigenerare tutto al caricamento
   successivo. Un rifiuto o un testo tagliato non si salvano.
 
+## Lettura diretta
+
+Con l'accesso, un click sul titolo o sui commenti apre una card (`ReaderSheet`):
+bottom sheet modale su mobile, side sheet modale da `sm`, un `<dialog>` con
+`showModal()`. Ha le tab "Articolo" e "Commenti". Ctrl/Cmd, Shift, Alt e il tasto
+centrale aprono ancora il sito in una scheda nuova. Senza accesso il titolo
+resta un link: anche le route rispondono 401.
+
+- **Due registri, un modello.** Gli articoli passano da una lista ordinata di
+  estrattori (`reader/extractors/`), dove vince il primo che riconosce l'URL:
+  `arxiv`, poi `generic`. I commenti hanno un adapter per fonte
+  (`reader/discussions/`). Tutti producono `ReaderArticle` o `Discussion` di
+  `reader-model.ts`. Un sito nuovo è un file e una riga nella lista, prima del
+  generico.
+- **Niente parser per sito sugli articoli.** I link di HN e Lobsters portano a
+  decine di domini diversi (45 su 49 nel campione verificato). Il generico è
+  Readability su linkedom: sul campione ha letto 44 articoli su 49, GitHub
+  compreso. Gli altri erano app o SPA (LessWrong), e sotto i 500 caratteri il
+  risultato diventa `unavailable` con l'`og:description`. Niente iframe: 20
+  siti su 49 lo bloccano con `X-Frame-Options` o `frame-ancestors`.
+- **arXiv dall'HTML LaTeXML** (`arxiv.org/html/<id>`, formule in MathML). Non
+  tutti i paper ce l'hanno: senza, resta l'abstract della pagina `abs` con un
+  avviso.
+- **Commenti**:
+  - HN: l'albero da Algolia `items/<id>`, ma i suoi figli sono in ordine di id.
+    L'ordine del primo livello viene dai `kids` di Firebase; i livelli sotto
+    restano cronologici, perché ordinarli costerebbe una chiamata per commento.
+  - Lobsters: `s/<id>.json`, una lista piatta già nell'ordine del sito.
+  - HF: `api/papers/<id>?field=comments` (documentato nello spec OpenAPI di HF).
+  - Reddit e arXiv non hanno adapter.
+- **Un solo sanitizer** (`reader/sanitize.ts`) per tutto l'HTML esterno. Rende
+  assoluti `href` e `src` rispetto all'URL finale, perché linkedom non lo fa, e
+  apre i link fuori dalla card. Toglie `srcset`, stili e script, e tiene il
+  MathML.
+- **Whitelist.** Il client manda solo la chiave.
+  - Discussioni: l'id va a un host fisso e basta validarne la forma.
+  - Articoli: l'URL si ricava dall'id per i paper. Per le news si cerca nello
+    snapshot in cache della sola fonte della chiave, poi nei segnalibri
+    dell'utente (un articolo salvato può essere uscito dalla front page).
+  - Nessun URL arriva dal client.
+- **Route GET, non Server Action.** Le Server Action di una pagina girano una
+  alla volta, e sulla corsia Papers la card aspetterebbe i lotti dei riassunti.
+- **Cache**: `"use cache"` per URL con `cacheLife("days")` per gli articoli,
+  `"minutes"` per le discussioni. Gli errori di rete non entrano in cache: il
+  sito giù diventa un `unavailable` fuori cache. A runtime su Vercel la cache è
+  in memoria per istanza: dopo un avvio a freddo si riscarica. Nel client
+  `reader-content.ts` tiene le risposte per la durata della visita.
+- **Il tasto indietro chiude la card.** All'apertura si aggiunge una voce con
+  `history.pushState` (Next 16 lo supporta e ci affianca il suo stato), e
+  chiudendo con Esc o con la X la si toglie. In `StrictMode` l'effetto non
+  aggiunge la voce due volte.
+
 ## Filtro categorie della corsia Papers
 
 `ARXIV_CATEGORY_CATALOG` contiene la tassonomia arXiv per gli archivi che
@@ -275,7 +335,7 @@ l'ultima e rimettere dati vecchi.
 ## Letto / non letto
 
 Un click sul titolo **o sul link ai commenti** segna l'articolo come visitato —
-entrambi significano "l'ho aperto". Il titolo diventa grigio, nella riga compare
+entrambi significano "l'ho aperto", che si apra la card o il sito. Il titolo diventa grigio, nella riga compare
 "letto", e l'interruttore "Solo non letti" lavora su questo.
 
 Nel `FeedBoard` l'ordine è **periodo → ordina → filtra per letto → taglia per

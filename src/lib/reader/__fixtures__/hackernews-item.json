@@ -1,0 +1,92 @@
+{
+  "id": 50195110,
+  "type": "story",
+  "author": "bo0tzz",
+  "text": null,
+  "created_at": "2026-10-22T13:33:39.000Z",
+  "children": [
+    {
+      "id": 50195081,
+      "type": "comment",
+      "author": "altbdoor",
+      "text": "There&#x27;s a formal press release in here:<p><a href=\"https:&#x2F;&#x2F;emudhra.com&#x2F;en&#x2F;press-release&#x2F;emudhra-to-exit-global-ssl-tls-certificate",
+      "created_at": "2026-10-22T13:31:39.000Z",
+      "children": []
+    },
+    {
+      "id": 50195217,
+      "type": "comment",
+      "author": "ieie3366",
+      "text": "Related: the absolutely brutal question battery the Chrome team publicly submitted to eMudhra<p><a href=\"https:&#x2F;&#x2F;bugzilla.mozilla.org&#x2F;show_bug.cg",
+      "created_at": "2026-10-22T13:43:24.000Z",
+      "children": [
+        {
+          "id": 50195648,
+          "type": "comment",
+          "author": "hmokiguess",
+          "text": "Why brutal? Reads very reasonable to me, nothing personal and nothing about someone or feelings everything about the ent",
+          "created_at": "2026-10-22T14:15:19.000Z",
+          "children": []
+        },
+        {
+          "id": 50199518,
+          "type": "comment",
+          "author": "kbar13",
+          "text": "oof. even as a bystander i’m feeling the cortisol just reading the questions. i’m curious what even goes into compiling ",
+          "created_at": "2026-10-22T18:55:08.000Z",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 50195818,
+      "type": "comment",
+      "author": "rahimnathwani",
+      "text": "&quot;There were no end entity certificates issued out of the affected CA’s.&quot;<p>This seems like a weird statement given that <i>anyone</i> can issue certif",
+      "created_at": "2026-10-22T14:23:36.000Z",
+      "children": [
+        {
+          "id": 50195943,
+          "type": "comment",
+          "author": "trollbridge",
+          "text": "Well, none came out of the Certificate Authority.<p>They just didn&#x27;t mention that now anyone can be their own Certi",
+          "created_at": "2026-10-22T14:31:41.000Z",
+          "children": []
+        },
+        {
+          "id": 50196722,
+          "type": "comment",
+          "author": "advisedwang",
+          "text": "You can also monitor if they show up in certificate transparency logs.  Which won&#x27;t catch all fraudulently issued c",
+          "created_at": "2026-10-22T15:26:38.000Z",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 50195923,
+      "type": "comment",
+      "author": "rdtsc",
+      "text": "&gt; However, the level of social media amplification around this incident has brought scrutiny that is out of proportion to SSL&#x2F;TLS’s place in our busines",
+      "created_at": "2026-10-22T14:29:40.000Z",
+      "children": [
+        {
+          "id": 50196910,
+          "type": "comment",
+          "author": "pigggg",
+          "text": "Various Indian regulations (particularly around commerce and banking) require you to use India companies for solutions l",
+          "created_at": "2026-10-22T15:37:46.000Z",
+          "children": []
+        },
+        {
+          "id": 50197068,
+          "type": "comment",
+          "author": "cebert",
+          "text": "Right? I don’t know why anybody would trust this company for anything.",
+          "created_at": "2026-10-22T15:50:09.000Z",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

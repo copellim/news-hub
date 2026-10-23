@@ -77,11 +77,17 @@ riassunto dell'abstract. Li genera Claude Haiku 5.5, solo per chi ha fatto
 l'accesso, e si salvano in un unico `summaries.jsonl` su Blob, così non si
 rielaborano a ogni apertura.
 
+**Lettura diretta.** Con l'accesso, un click sul titolo apre l'articolo in una
+card dentro il portale, con i commenti di HN, Lobsters e Hugging Face in una
+seconda tab. L'articolo si estrae con Readability da qualsiasi sito, i paper
+arXiv dalla loro versione HTML; quello che non si può leggere lì (un'app, un
+PDF) rimanda al sito. Ctrl/Cmd+click apre ancora il sito in una scheda nuova.
+
 ## Account e impostazioni
 
 Senza accesso si vedono solo le liste di News e Papers. Con l'accesso Google,
-se l'email è in `ALLOWED_EMAILS`, compaiono stelle, letti e riassunti, e si
-generano quelli mancanti.
+se l'email è in `ALLOWED_EMAILS`, compaiono stelle, letti, riassunti e la
+lettura diretta, e si generano i riassunti mancanti.
 
 Categorie arXiv, segnalibri e articoli letti stanno in **un file JSON per
 utente** su Blob:
@@ -108,6 +114,7 @@ src/lib/config.ts           catalogo categorie arXiv, tetti, user-agent
 src/lib/settings*.ts        stato dell'utente: modello condiviso e copia nel client
 src/lib/auth.ts             login Google con Better Auth, allowlist
 src/lib/summaries/          riassunti: file su Blob e generazione con Haiku
+src/lib/reader/             lettura diretta: estrattori, commenti, sanitizer
 src/lib/sources/            un fetcher per fonte, tutti server-only
 src/app/                    le tre pagine, le Server Action e le route API
 ```

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 
+import { PublishedAt } from "@/components/PublishedAt";
+import { ReaderSheet, type ReaderTab } from "@/components/ReaderSheet";
 import { SaveToQueueButton } from "@/components/SaveToQueueButton";
 import { useNow } from "@/lib/now";
-import { useVisitedItems } from "@/lib/settings";
+import { hasReadableDiscussion, isSelfPost } from "@/lib/reader-model";
+import { useSettingsStatus, useVisitedItems } from "@/lib/settings";
 import {
   hostnameOf,
   LANE_SOURCES,
@@ -65,16 +68,6 @@ const RECENT_BAND_HOURS = 24;
 
 const HOUR_MS = 3_600_000;
 
-const relativeTime = new Intl.RelativeTimeFormat("it", { numeric: "auto" });
-
-const absoluteTime = new Intl.DateTimeFormat("it-IT", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/Rome",
-});
-
 const NO_SUMMARIES: ReadonlyMap<string, string> = new Map();
 const NO_PENDING_KEYS: ReadonlySet<string> = new Set();
 
@@ -118,6 +111,30 @@ export function FeedList({
   // Un solo abbonamento allo store per lista, non uno per riga.
   const { visitedKeys, markVisited } = useVisitedItems();
   const now = useNow();
+  const settingsStatus = useSettingsStatus();
+  const [reading, setReading] = useState<{ item: FeedItem; tab: ReaderTab } | null>(
+    null,
+  );
+
+  // La card è per chi ha fatto l'accesso ("error" vuol dire accesso fatto ma
+  // impostazioni non caricate). Per gli altri, e durante il caricamento, il
+  // link resta un link.
+  const canReadHere = settingsStatus === "ready" || settingsStatus === "error";
+  const openLink = (
+    item: FeedItem,
+    tab: ReaderTab,
+    event: MouseEvent<HTMLAnchorElement>,
+  ) => {
+    markVisited(item.key);
+    if (!canReadHere || !isPlainClick(event)) {
+      return;
+    }
+    if (tab === "comments" && !hasReadableDiscussion(item)) {
+      return;
+    }
+    event.preventDefault();
+    setReading({ item, tab });
+  };
 
   let groups: ItemGroup[] = [{ id: "all", label: null, items: lane.items }];
   if (groupByAge && now !== null) {
@@ -156,7 +173,7 @@ export function FeedList({
                     key={item.key}
                     item={item}
                     isVisited={visitedKeys.has(item.key)}
-                    onVisit={markVisited}
+                    onOpenLink={openLink}
                     action={rowAction?.(item)}
                     summary={summaries.get(item.key) ?? null}
                     isSummaryPending={pendingSummaryKeys.has(item.key)}
@@ -169,9 +186,44 @@ export function FeedList({
             </section>
           ))
       )}
+
+      {reading && (
+        <ReaderSheet
+          // Una card nuova per ogni item: tab e scroll non passano dall'uno all'altro.
+          key={reading.item.key}
+          item={reading.item}
+          initialTab={reading.tab}
+          onClose={() => setReading(null)}
+        />
+      )}
     </div>
   );
 }
+
+/**
+ * Ctrl/Cmd, Shift, Alt e il tasto centrale vogliono la scheda nuova o il menu
+ * del browser: solo il click sinistro semplice apre la card.
+ */
+function isPlainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return (
+    event.button === 0 &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
+}
+
+/** Il titolo di una self-post porta alla discussione: la card apre i commenti. */
+function titleTabOf(item: FeedItem): ReaderTab {
+  return isSelfPost(item) ? "comments" : "article";
+}
+
+type OpenLink = (
+  item: FeedItem,
+  tab: ReaderTab,
+  event: MouseEvent<HTMLAnchorElement>,
+) => void;
 
 function barOf(
   item: FeedItem,
@@ -215,7 +267,7 @@ function groupsByScore(items: FeedItem[]): ItemGroup[] {
 function FeedRow({
   item,
   isVisited,
-  onVisit,
+  onOpenLink,
   action,
   summary,
   isSummaryPending,
@@ -225,7 +277,8 @@ function FeedRow({
 }: {
   item: FeedItem;
   isVisited: boolean;
-  onVisit: (key: string) => void;
+  /** Segna letto e, se si può, apre la card invece del sito. */
+  onOpenLink: OpenLink;
   action: ReactNode;
   summary: string | null;
   isSummaryPending: boolean;
@@ -253,7 +306,7 @@ function FeedRow({
         href={item.url}
         target="_blank"
         rel="noreferrer"
-        onClick={() => onVisit(item.key)}
+        onClick={(event) => onOpenLink(item, titleTabOf(item), event)}
         className={`mt-1.5 px-4 text-lg leading-[1.3] font-semibold tracking-[-0.01em] text-pretty decoration-1 underline-offset-[3px] [grid-area:title] hover:underline sm:px-0 sm:text-[19px] ${
           isVisited ? "text-muted" : "text-ink"
         }`}
@@ -292,7 +345,7 @@ function FeedRow({
         </div>
       )}
 
-      <Stats item={item} bar={bar} onVisit={onVisit} />
+      <Stats item={item} bar={bar} onOpenLink={onOpenLink} />
 
       <div className="mt-3 flex items-center justify-end border-t border-rule pr-1 [grid-area:actions] sm:-mt-2.5 sm:-mr-2.5 sm:ml-3 sm:items-start sm:self-start sm:border-0 sm:pr-0">
         <SaveToQueueButton item={item} />
@@ -342,11 +395,11 @@ function Summary({ text }: { text: string }) {
 function Stats({
   item,
   bar,
-  onVisit,
+  onOpenLink,
 }: {
   item: FeedItem;
   bar: PlaceBarValue | null;
-  onVisit: (key: string) => void;
+  onOpenLink: OpenLink;
 }) {
   const isHeated = isHeatedDiscussion(item);
   const scoreUnit = LANE_SOURCES.papers.includes(item.source) ? "voti" : "punti";
@@ -376,7 +429,7 @@ function Stats({
             href={item.discussionUrl}
             target="_blank"
             rel="noreferrer"
-            onClick={() => onVisit(item.key)}
+            onClick={(event) => onOpenLink(item, "comments", event)}
             className={`tabular-nums underline-offset-[3px] hover:underline ${
               isHeated || bar?.metric === "commentCount" ? "font-bold text-ink" : ""
             }`}
@@ -466,30 +519,4 @@ function isHeatedDiscussion(item: FeedItem): boolean {
 
 function hoursSince(iso: string, now: number): number {
   return (now - Date.parse(iso)) / HOUR_MS;
-}
-
-/**
- * L'età ("16 ore fa") esiste solo dopo il montaggio: prima, e nel render del
- * server, c'è la data assoluta, che non dipende da quando la cache è nata.
- */
-function PublishedAt({ iso, now }: { iso: string; now: number | null }) {
-  const absolute = absoluteTime.format(new Date(iso));
-  return (
-    <time dateTime={iso} title={absolute}>
-      {now === null ? absolute : ageLabel(iso, now)}
-    </time>
-  );
-}
-
-function ageLabel(iso: string, now: number): string {
-  const minutes = Math.max(1, Math.round((now - Date.parse(iso)) / 60_000));
-  if (minutes < 60) {
-    return relativeTime.format(-minutes, "minute");
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return relativeTime.format(-hours, "hour");
-  }
-  // Con `numeric: "auto"` -1 diventa "ieri" e -2 "l'altro ieri".
-  return relativeTime.format(-Math.floor(hours / 24), "day");
 }

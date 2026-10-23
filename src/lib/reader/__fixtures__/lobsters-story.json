@@ -1,0 +1,73 @@
+{
+  "short_id": "nmurnh",
+  "comments_url": "https://lobste.rs/s/nmurnh/what_is_your_opinion_on_submission",
+  "description": "<p>Were concerns about its removal real, or has its absence moderated content to be higher quality?</p>\n<p>Were there any unexpected consequences?</p>\n<p>Is anyone willing to admit that their hope for",
+  "comments": [
+    {
+      "short_id": "uqh4lj",
+      "created_at": "2026-10-22T15:13:28.019-05:00",
+      "is_deleted": false,
+      "is_moderated": false,
+      "score": 33,
+      "parent_comment": null,
+      "comment": "<p>It's too early to tell, but personally I've been annoyed a few times opening obviously LLM-assisted articles (even with disclosures in the article) that don'",
+      "commenting_user": "bramh",
+      "depth": 0
+    },
+    {
+      "short_id": "lxxqsn",
+      "created_at": "2026-10-22T16:59:15.552-05:00",
+      "is_deleted": false,
+      "is_moderated": false,
+      "score": 8,
+      "parent_comment": "uqh4lj",
+      "comment": "<p>All of the ones I have seen have met the <code>off-topic</code> criteria and I have been flagging them accordingly.</p>\n",
+      "commenting_user": "eyesinthefire",
+      "depth": 1
+    },
+    {
+      "short_id": "8jbepi",
+      "created_at": "2026-10-22T17:41:43.936-05:00",
+      "is_deleted": false,
+      "is_moderated": false,
+      "score": 7,
+      "parent_comment": "uqh4lj",
+      "comment": "<p>Oh that one is spam, and I marked it as such.\n(from <a href=\"https://lobste.rs/about\" rel=\"ugc\">https://lobste.rs/about</a>)</p>\n<blockquote>\n<p><strong>Spam",
+      "commenting_user": "pmbauer",
+      "depth": 1
+    },
+    {
+      "short_id": "il8wbs",
+      "created_at": "2026-10-23T01:12:54.136-05:00",
+      "is_deleted": false,
+      "is_moderated": false,
+      "score": 1,
+      "parent_comment": "8jbepi",
+      "comment": "<p>I fully agree, but 18 hours and 33 flags later it seems the moderators don't.</p>\n<p>It did gain an <code>ai-tooling</code> tag, but the post isn't about \"th",
+      "commenting_user": "bramh",
+      "depth": 2
+    },
+    {
+      "short_id": "tehvra",
+      "created_at": "2026-10-22T17:35:45.288-05:00",
+      "is_deleted": false,
+      "is_moderated": false,
+      "score": 4,
+      "parent_comment": "uqh4lj",
+      "comment": "<p>That switch article is clearly off topic. I have flagged it as such</p>\n",
+      "commenting_user": "singpolyma",
+      "depth": 1
+    },
+    {
+      "short_id": "3sbgqg",
+      "created_at": "2026-10-22T13:04:50.629-05:00",
+      "is_deleted": false,
+      "is_moderated": false,
+      "score": 28,
+      "parent_comment": null,
+      "comment": "<p>I dunno, feels like nearly everything was tagged with vibecoding before.  It didn't really add much in that regard.</p>\n",
+      "commenting_user": "marginalia",
+      "depth": 0
+    }
+  ]
+}

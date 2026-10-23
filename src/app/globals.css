@@ -308,6 +308,233 @@ html {
         "stats labels actions";
     }
   }
+
+  /*
+   * La card di lettura. Su mobile è un bottom sheet modale di M3 a tutta
+   * altezza, con un filo di scrim in cima e gli angoli superiori a 28 px. Da
+   * `sm` è un side sheet modale a destra, più largo dei 400 dp di M3 perché
+   * dentro si legge un articolo intero. Fondo surfaceContainerLow, come vuole
+   * M3 per i sheet modali.
+   */
+  .reader-sheet {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - 1.5rem);
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 28px 28px 0 0;
+    background: var(--stripe);
+    color: var(--ink);
+    overflow: hidden;
+    transition: transform 350ms cubic-bezier(0.05, 0.7, 0.1, 1);
+  }
+
+  @starting-style {
+    .reader-sheet[open] {
+      transform: translateY(100%);
+    }
+  }
+
+  @media (width >= 40rem) {
+    .reader-sheet {
+      inset: 0 0 0 auto;
+      width: min(45rem, 100vw - 5rem);
+      height: 100dvh;
+      border-radius: 16px 0 0 16px;
+    }
+
+    @starting-style {
+      .reader-sheet[open] {
+        transform: translateX(100%);
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reader-sheet {
+      transition: none;
+    }
+  }
+
+  /* Scrim di M3: nero al 32%, in chiaro e in scuro. */
+  .reader-sheet::backdrop {
+    background: rgb(0 0 0 / 0.32);
+  }
+
+  /* Con la card aperta la pagina sotto non scorre. */
+  :root:has(.reader-sheet[open]) {
+    overflow: hidden;
+  }
+
+  /* Indicatore di avanzamento lineare indeterminato di M3. */
+  .linear-progress {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: var(--accent-track);
+  }
+
+  .linear-progress::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    width: 40%;
+    border-radius: 9999px;
+    background: var(--accent);
+    animation: linear-progress 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /*
+   * Il testo estratto, articoli e post: lo stesso serif dei riassunti. L'HTML
+   * arriva da siti qualsiasi, quindi le regole valgono per i tag e non per
+   * classi che il sanitizer ha già tolto.
+   */
+  .reader-prose {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--prose);
+    overflow-wrap: break-word;
+  }
+
+  .reader-prose > * + *,
+  .reader-prose section > * + *,
+  .reader-prose div > * + * {
+    margin-top: 1em;
+  }
+
+  .reader-prose :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 1.6em;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .reader-prose h1,
+  .reader-prose h2 {
+    font-size: 1.375rem;
+  }
+
+  .reader-prose :is(h3, h4, h5, h6) {
+    font-size: 1.125rem;
+  }
+
+  .reader-prose :is(ul, ol) {
+    padding-left: 1.5em;
+  }
+
+  .reader-prose ul {
+    list-style: disc;
+  }
+
+  .reader-prose ol {
+    list-style: decimal;
+  }
+
+  .reader-prose li + li {
+    margin-top: 0.35em;
+  }
+
+  .reader-prose blockquote {
+    border-left: 3px solid var(--rule);
+    padding-left: 1em;
+    color: var(--muted);
+  }
+
+  .reader-prose img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+  }
+
+  .reader-prose figcaption {
+    margin-top: 0.5em;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .reader-prose table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+  }
+
+  .reader-prose :is(td, th) {
+    border: 1px solid var(--rule);
+    padding: 0.35em 0.6em;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .reader-prose math[display="block"] {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .reader-prose hr {
+    border-color: var(--rule);
+  }
+
+  .reader-prose a,
+  .reader-comment a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .reader-prose :is(pre, code),
+  .reader-comment :is(pre, code) {
+    font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+    font-size: 0.875rem;
+  }
+
+  .reader-prose :not(pre) > code,
+  .reader-comment :not(pre) > code {
+    border-radius: 6px;
+    background: var(--nav-surface);
+    padding: 0.1em 0.35em;
+  }
+
+  .reader-prose pre,
+  .reader-comment pre {
+    overflow-x: auto;
+    border-radius: 12px;
+    background: var(--nav-surface);
+    padding: 0.85em 1em;
+    line-height: 1.5;
+  }
+
+  /* I commenti: sans, più piccoli dell'articolo, come una conversazione. */
+  .reader-comment {
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--prose);
+    overflow-wrap: break-word;
+  }
+
+  .reader-comment > * + * {
+    margin-top: 0.7em;
+  }
+}
+
+@keyframes linear-progress {
+  from {
+    left: -40%;
+  }
+  to {
+    left: 100%;
+  }
 }
 
 @keyframes ripple {

@@ -1,0 +1,46 @@
+{
+  "comments": [
+    {
+      "id": "6ad9e52dc25d9d977c1b58ff",
+      "createdAt": "2026-10-22T10:27:57.000Z",
+      "author": {
+        "name": "Purdy0228"
+      },
+      "data": {
+        "hidden": false,
+        "latest": {
+          "html": "<p>We trace seven open-source RL training frameworks (verl, TRL, OpenRLHF, NeMo-RL, ROLL, slime, AReaL) through their commit histories. Of 1,598 arXiv papers that propose a general RL training method,"
+        }
+      },
+      "replies": []
+    },
+    {
+      "id": "6ad9fd6acd6bee77a7e99b7a",
+      "createdAt": "2026-10-22T12:11:22.000Z",
+      "author": {
+        "name": "O96a"
+      },
+      "data": {
+        "hidden": false,
+        "latest": {
+          "html": "<p>The flat 5–7 merges per cohort is the number worth arguing about, and I don't read it as a discovery ceiling — that's maintainer throughput. Seven frameworks landing in the same band, year after ye"
+        }
+      },
+      "replies": [
+        {
+          "id": "6ada0726cf5f62dd0e812d21",
+          "createdAt": "2026-10-22T12:52:54.000Z",
+          "author": {
+            "name": "Purdy0228"
+          },
+          "data": {
+            "hidden": false,
+            "latest": {
+              "html": "<p>Thanks, this is a useful push. One clarification first: the 5 to 7 is the total across all seven frameworks for each of the five quarterly cohorts, counting papers whose method reached at least one"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
