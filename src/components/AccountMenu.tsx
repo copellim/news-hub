@@ -3,8 +3,9 @@
 import { authClient } from "@/lib/auth-client";
 import { clearSettings, useSettingsStatus } from "@/lib/settings";
 
+/** Pulsante di testo di M3: niente contorno, livello di stato a pillola. */
 const BUTTON_CLASS =
-  "rounded py-2 text-sm text-muted underline-offset-4 hover:text-ink hover:underline";
+  "state-layer -mr-3 h-10 rounded-full px-3 text-sm font-medium text-accent";
 
 /**
  * Accesso con Google. Le news e i paper si leggono anche senza; segnalibri,

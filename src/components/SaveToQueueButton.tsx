@@ -31,7 +31,7 @@ export function SaveToQueueButton({ item }: { item: FeedItem }) {
           ? `Togli dai segnalibri: ${item.title}`
           : `Salva per dopo: ${item.title}`
       }
-      className={`${TOUCH_TARGET_CLASS} flex items-center justify-center rounded-md ${
+      className={`${TOUCH_TARGET_CLASS} state-layer flex items-center justify-center rounded-full ${
         isSaved ? "text-accent" : "text-faint hover:text-ink"
       }`}
     >

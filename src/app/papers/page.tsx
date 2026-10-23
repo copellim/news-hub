@@ -1,11 +1,16 @@
+import type { Viewport } from "next";
+
 import { FeedBoard } from "@/components/FeedBoard";
+import { themeColorOf } from "@/lib/sections";
 import { getLane } from "@/lib/sources";
+
+export const viewport: Viewport = { themeColor: themeColorOf("papers") };
 
 export default async function PapersPage() {
   const lane = await getLane("papers");
 
   return (
-    <div data-section="papers" className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <p className="max-w-[66ch] px-1 text-sm leading-relaxed text-muted sm:px-4">
         Il feed arXiv non ha voti: con &laquo;Più votati&raquo; finisce sotto
         i paper HF, che invece li hanno. Con l&apos;accesso le categorie

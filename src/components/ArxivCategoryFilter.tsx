@@ -19,7 +19,7 @@ export function ArxivCategoryFilter({
   const archives = groupByArchive();
 
   return (
-    <details className="mx-1 rounded-lg border border-card-line bg-surface px-4 py-3 sm:mx-4">
+    <details className="mx-1 rounded-xl border border-card-line bg-card px-4 py-3 sm:mx-4">
       <summary className="cursor-pointer text-sm text-muted">
         <span className="font-semibold text-ink">Categorie arXiv</span>:{" "}
         {summaryOf(selected)}
@@ -41,14 +41,17 @@ export function ArxivCategoryFilter({
                     disabled={disabled}
                     onClick={() => onToggle(category.id)}
                     aria-pressed={isSelected}
-                    className={`rounded-full border px-2.5 py-1 text-[13px] disabled:opacity-50 ${
+                    // Filter chip di M3: contornato da spento, in
+                    // secondaryContainer con la spunta da acceso.
+                    className={`state-layer flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] disabled:opacity-50 ${
                       isSelected
-                        ? "border-accent bg-accent text-on-accent"
-                        : "border-tag-line text-ink hover:border-faint"
+                        ? "border-transparent bg-chip font-semibold text-chip-ink"
+                        : "border-faint text-ink"
                     }`}
                   >
-                    {category.label}{" "}
-                    <span className={isSelected ? "text-on-accent/75" : "text-muted"}>
+                    {isSelected && <CheckIcon />}
+                    {category.label}
+                    <span className={isSelected ? "font-normal" : "text-muted"}>
                       {category.id}
                     </span>
                   </button>
@@ -59,6 +62,24 @@ export function ArxivCategoryFilter({
         ))}
       </div>
     </details>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={16}
+      height={16}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
   );
 }
 

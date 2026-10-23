@@ -4,25 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { spawnRipple } from "@/components/ripple";
 import { useBookmarks } from "@/lib/settings";
 
-/** `section` è il `data-section` che sceglie l'accento in globals.css. */
 const TABS = [
-  { href: "/", label: "News", section: "news", icon: <NewsIcon /> },
-  { href: "/papers", label: "Papers", section: "papers", icon: <PaperIcon /> },
-  {
-    href: "/da-leggere",
-    label: "Da leggere",
-    section: "queue",
-    icon: <BookmarkIcon />,
-  },
+  { href: "/", label: "News", icon: <NewsIcon /> },
+  { href: "/papers", label: "Papers", icon: <PaperIcon /> },
+  { href: "/da-leggere", label: "Da leggere", icon: <BookmarkIcon /> },
 ] as const;
 
 /**
  * Da `sm` in su le sezioni sono i titoli della pagina: quella attiva scura, le
- * altre grigie. Sotto `sm` la navigazione è una barra fissa a fondo schermo,
- * dove il pollice ci arriva, con icona ed etichetta; in cima resta solo il
- * nome della sezione.
+ * altre grigie. Sotto `sm` è la navigation bar di Material 3, fissa a fondo
+ * schermo dove il pollice ci arriva: fondo surfaceContainer, indicatore a
+ * pillola secondaryContainer dietro l'icona attiva, livello di stato e onda
+ * alla pressione. In cima resta solo il nome della sezione.
  */
 export function LaneTabs() {
   const pathname = usePathname();
@@ -38,8 +34,7 @@ export function LaneTabs() {
       )}
       <nav
         aria-label="Sezioni"
-        data-section={activeTab?.section ?? "news"}
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-rule bg-nav-surface/85 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgb(0_0_0/0.05)] backdrop-blur-lg sm:static sm:z-auto sm:gap-6 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:shadow-none sm:backdrop-blur-none"
+        className="fixed inset-x-0 bottom-0 z-40 flex bg-nav-surface px-2 pb-[env(safe-area-inset-bottom)] sm:static sm:z-auto sm:gap-6 sm:bg-transparent sm:px-0 sm:pb-0"
       >
         {TABS.map((tab) => {
           const isActive = tab === activeTab;
@@ -49,10 +44,11 @@ export function LaneTabs() {
               key={tab.href}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
-              className={`group flex h-16 flex-1 flex-col items-center justify-center gap-1 text-xs font-semibold sm:h-auto sm:flex-none sm:flex-row sm:gap-1 sm:text-[28px] sm:leading-tight sm:tracking-[-0.02em] ${
+              onPointerDown={spawnRipple}
+              className={`nav-item flex h-20 flex-1 flex-col items-center justify-center gap-1 text-xs [-webkit-tap-highlight-color:transparent] focus-visible:outline-none sm:h-auto sm:flex-none sm:flex-row sm:text-[28px] sm:leading-tight sm:font-semibold sm:tracking-[-0.02em] sm:focus-visible:outline-solid ${
                 isActive
-                  ? "text-ink"
-                  : "text-muted hover:text-ink sm:text-faint sm:hover:text-ink"
+                  ? "font-semibold text-ink"
+                  : "font-medium text-muted hover:text-ink sm:text-faint sm:hover:text-ink"
               }`}
             >
               <TabIndicator isActive={isActive} count={count}>
@@ -73,8 +69,9 @@ export function LaneTabs() {
 }
 
 /**
- * Solo mobile: la pillola tenue dietro l'icona attiva dice dove sei senza
- * colorare l'intera cella.
+ * Solo mobile. La pillola è anche il bersaglio del livello di stato e il
+ * contenitore dell'onda: su M3 la pressione si vede lì, non sull'intera cella.
+ * Il focus da tastiera la contorna, al posto del contorno della cella.
  */
 function TabIndicator({
   isActive,
@@ -87,13 +84,18 @@ function TabIndicator({
 }) {
   return (
     <span
-      className={`relative flex h-8 w-14 items-center justify-center rounded-full transition-colors motion-reduce:transition-none sm:hidden ${
-        isActive ? "bg-chip text-chip-ink" : ""
+      className={`nav-indicator relative flex h-8 w-16 items-center justify-center rounded-full transition-colors duration-200 motion-reduce:transition-none sm:hidden [.nav-item:focus-visible_&]:outline-3 [.nav-item:focus-visible_&]:outline-offset-2 [.nav-item:focus-visible_&]:outline-accent ${
+        isActive ? "bg-chip text-chip-ink" : "text-muted"
       }`}
     >
+      <span
+        data-ripple-host
+        aria-hidden
+        className="absolute inset-0 overflow-hidden rounded-full"
+      />
       {children}
       {count > 0 && (
-        <span className="absolute top-0 right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] leading-none font-bold text-on-accent tabular-nums">
+        <span className="absolute -top-0.5 right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[11px] leading-none font-bold text-on-accent tabular-nums">
           {count}
         </span>
       )}
@@ -105,11 +107,11 @@ function TabIcon({ children }: { children: ReactNode }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      width={22}
-      height={22}
+      width={24}
+      height={24}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

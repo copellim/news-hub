@@ -123,7 +123,7 @@ export function FeedList({
       {lane.failures.map((failure) => (
         <p
           key={failure.source}
-          className="rounded-lg border border-warn-line bg-warn px-4 py-3 text-sm"
+          className="rounded-xl border border-warn-line bg-warn px-4 py-3 text-sm"
         >
           <strong>{SOURCE_LABELS[failure.source]}</strong> non risponde:{" "}
           {failure.message}
@@ -210,7 +210,7 @@ function FeedRow({
   const hasLabels = signals.length > 0 || item.tags.length > 0;
 
   return (
-    <li className="feed-row rounded-xl border border-card-line bg-surface sm:rounded-lg sm:border-0 sm:p-4 sm:even:bg-stripe">
+    <li className="feed-row rounded-xl border border-card-line bg-card sm:border-0 sm:bg-transparent sm:p-4 sm:even:bg-stripe">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 pt-4 text-sm text-muted [grid-area:meta] sm:px-0 sm:pt-0">
         <span className={`font-semibold ${SOURCE_COLORS[item.source]}`}>
           {SOURCE_LABELS[item.source]}
@@ -247,7 +247,7 @@ function FeedRow({
           {signals.map((signal) => (
             <span
               key={signal}
-              className="rounded-full bg-chip px-2 py-0.5 font-semibold text-chip-ink"
+              className="rounded-lg bg-chip px-2 py-0.5 font-semibold text-chip-ink"
             >
               {signal}
             </span>
@@ -255,7 +255,7 @@ function FeedRow({
           {item.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-tag-line px-2 py-px text-muted"
+              className="rounded-lg border border-tag-line px-2 py-px text-muted"
             >
               {tag}
             </span>
@@ -301,7 +301,7 @@ function Summary({ text }: { text: string }) {
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="mt-1 hidden text-sm font-semibold text-accent hover:underline sm:inline"
+          className="state-layer mt-1 -ml-3 hidden rounded-full px-3 py-1.5 text-sm font-semibold text-accent sm:inline-flex"
         >
           Leggi tutto il riassunto
         </button>

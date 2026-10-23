@@ -269,6 +269,10 @@ Un click sul titolo **o sul link ai commenti** segna l'articolo come visitato �
 entrambi significano "l'ho aperto". Il titolo diventa grigio, nella riga compare
 "letto", e l'interruttore "Solo non letti" lavora su questo.
 
+Nel `FeedBoard` l'ordine è **periodo → ordina → filtra per letto → taglia per
+fonte**: se si tagliasse prima, ogni fonte sprecherebbe le sue N posizioni su
+articoli che il filtro sta per nascondere.
+
 ## Età relative
 
 "16 ore fa", la fascia "Ultime 24 ore" e l'etichetta "Nuovo" dipendono dall'ora
@@ -277,9 +281,30 @@ corrente, quindi esistono solo dopo il montaggio (`useNow` in `src/lib/now.ts`,
 calcolata nel render sarebbe congelata e darebbe un mismatch di idratazione.
 Prima del montaggio la riga mostra la data assoluta.
 
-Nel `FeedBoard` l'ordine è **ordina → filtra per letto → taglia per fonte**: se
-si tagliasse prima, ogni fonte sprecherebbe le sue N posizioni su articoli che
-il filtro sta per nascondere.
+## Stile: Material 3, una palette per sezione
+
+L'interfaccia segue Material 3: ruoli colore, navigation bar su mobile, tab,
+pulsante segmentato, interruttore, filter chip, livelli di stato e onda alla
+pressione. I font restano quelli scelti per la lettura, Instrument Sans e
+Newsreader.
+
+- **Palette per sezione.** News, Papers e Da leggere hanno ciascuna i propri
+  ruoli M3, generati con `@material/material-color-utilities` da un colore
+  sorgente. Fondi e neutri vengono dalla variante tonal spot, gli accenti
+  dalla fidelity. I valori stanno in `globals.css` sotto `[data-section]`, in
+  chiaro e in scuro. Rigenerarli significa rifare il calcolo e ricontrollare
+  i contrasti, non ritoccare un esadecimale a mano.
+- **`data-section` sta solo in `SectionFrame`**, nel layout, e non nelle
+  pagine: per via di `<Activity>` (sotto) la pagina precedente resta nel DOM,
+  e due sezioni vive insieme si contenderebbero i colori. Il `surface` di ogni
+  sezione è ripetuto in `src/lib/sections.ts`, perché `viewport.themeColor`
+  vuole valori letterali.
+- **Le regole globali stanno nei layer di Tailwind** (`base`, `components`):
+  fuori dai layer vincerebbero sulle classi di utilità.
+- **Onda di pressione**: `spawnRipple` in `src/components/ripple.ts` aggiunge
+  il cerchio dentro un contenitore `data-ripple-host` che React renderizza
+  vuoto, così la riconciliazione non lo tocca. Con il movimento ridotto non
+  parte.
 
 ## Nota su Next 16: `<Activity>`
 

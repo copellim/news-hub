@@ -5,8 +5,9 @@
   --font-serif: var(--font-newsreader), Georgia, serif;
 
   --color-surface: var(--surface);
-  --color-canvas: var(--canvas);
+  --color-card: var(--card);
   --color-stripe: var(--stripe);
+  --color-nav-surface: var(--nav-surface);
   --color-ink: var(--ink);
   --color-prose: var(--prose);
   --color-muted: var(--muted);
@@ -15,7 +16,6 @@
   --color-card-line: var(--card-line);
   --color-tag-line: var(--tag-line);
   --color-accent: var(--accent);
-  --color-nav-surface: var(--nav-surface);
   --color-on-accent: var(--on-accent);
   --color-accent-track: var(--accent-track);
   --color-chip: var(--chip);
@@ -31,25 +31,10 @@
   --color-src-arxiv: var(--src-arxiv);
 }
 
+/* Colori che non dipendono dalla sezione: avvisi e fonti. */
 :root {
   color-scheme: light dark;
 
-  --surface: #ffffff;
-  --canvas: #f2f4f5;
-  --stripe: #f5f7f7;
-  --ink: #1a1d21;
-  --prose: #2e3338;
-  --muted: #5d656e;
-  --faint: #8a929a;
-  --rule: #e5e8eb;
-  --card-line: #e3e7ea;
-  --tag-line: #dde1e5;
-  --accent: #0b7266;
-  --on-accent: #ffffff;
-  --accent-track: #dcebe8;
-  --chip: #e3f1ef;
-  --chip-ink: #0a5c53;
-  --switch-off: #c9ced3;
   --warn: #fbf5ea;
   --warn-line: #e8d3b0;
   --warn-ink: #9a4a00;
@@ -60,30 +45,8 @@
   --src-arxiv: #23703a;
 }
 
-/*
- * Tema scuro con una palette sua, non i colori chiari invertiti: fondo grafite
- * e non nero, testo dei riassunti un gradino sotto i titoli per non abbagliare
- * su righe lunghe, accento e colori delle fonti schiariti per restare sopra
- * 4,5:1 sul fondo.
- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --surface: #14181b;
-    --canvas: #0d1012;
-    --stripe: #1a1f23;
-    --ink: #e8ecef;
-    --prose: #cdd3d8;
-    --muted: #98a1aa;
-    --faint: #6e7780;
-    --rule: #262c31;
-    --card-line: #252b30;
-    --tag-line: #343b41;
-    --accent: #4fc1af;
-    --on-accent: #0d1012;
-    --accent-track: #1f3a36;
-    --chip: #173430;
-    --chip-ink: #8fdccd;
-    --switch-off: #3a4248;
     --warn: #2a2216;
     --warn-line: #4d3b22;
     --warn-ink: #e6b26a;
@@ -96,80 +59,259 @@
 }
 
 /*
- * Ogni sezione ha il suo accento: stessa luminosità e saturazione, cambia solo
- * la tinta, così le pagine si riconoscono senza smettere di sembrare la stessa
- * app. Niente arancio né ocra: si confonderebbero con le etichette di HN e HF.
- * L'attributo sta sul contenuto della pagina e sulla navbar, entrambi già
- * giusti nel render del server: nessun lampo di colore al caricamento.
+ * Palette per sezione, con i ruoli colore di Material 3 generati da
+ * @material/material-color-utilities a partire da un colore sorgente: teal
+ * #0b7266 per News, indaco #4a54c4 per Papers, prugna #8a3f8f per Da leggere.
+ * Fondi e neutri vengono dalla variante "tonal spot", quella standard di M3:
+ * ogni pagina ha una tinta sua, ma tenue. Gli accenti vengono dalla variante
+ * "fidelity", che conserva la saturazione del colore sorgente. Corrispondenze:
+ * surface = surface, card = surfaceContainerLowest (in scuro High), stripe =
+ * surfaceContainerLow, nav-surface = surfaceContainer, ink = onSurface, muted
+ * = onSurfaceVariant, faint = outline, rule = outlineVariant, accent =
+ * primary, chip = secondaryContainer. Ogni coppia di testo resta sopra 4,5:1.
+ * Il `surface` di ogni sezione è ripetuto in src/lib/sections.ts per la barra
+ * del browser.
  */
+[data-section="news"] {
+  --surface: #f4fbf8;
+  --card: #ffffff;
+  --stripe: #eff5f2;
+  --nav-surface: #e9efec;
+  --ink: #171d1b;
+  --prose: #171d1b;
+  --muted: #3f4946;
+  --faint: #6f7976;
+  --rule: #bec9c5;
+  --card-line: #bec9c5;
+  --tag-line: #bec9c5;
+  --accent: #00584e;
+  --on-accent: #ffffff;
+  --accent-track: #cce8e2;
+  --chip: #cce8e2;
+  --chip-ink: #334b47;
+  --switch-off: #dde4e1;
+}
+
 [data-section="papers"] {
-  --accent: #4a54c4;
-  --accent-track: #e0e2f7;
-  --chip: #e8e9fa;
-  --chip-ink: #3a41a3;
+  --surface: #fbf8ff;
+  --card: #ffffff;
+  --stripe: #f5f2fa;
+  --nav-surface: #efedf4;
+  --ink: #1b1b21;
+  --prose: #1b1b21;
+  --muted: #46464f;
+  --faint: #777680;
+  --rule: #c7c5d0;
+  --card-line: #c7c5d0;
+  --tag-line: #c7c5d0;
+  --accent: #303aab;
+  --on-accent: #ffffff;
+  --accent-track: #e1e0f9;
+  --chip: #e1e0f9;
+  --chip-ink: #444559;
+  --switch-off: #e4e1e9;
 }
 
 [data-section="queue"] {
-  --accent: #8a3f8f;
-  --accent-track: #f0e0f1;
-  --chip: #f5e8f5;
-  --chip-ink: #71317a;
+  --surface: #fff7fa;
+  --card: #ffffff;
+  --stripe: #fcf0f7;
+  --nav-surface: #f6ebf1;
+  --ink: #1f1a1f;
+  --prose: #1f1a1f;
+  --muted: #4d444c;
+  --faint: #7f747c;
+  --rule: #d0c3cc;
+  --card-line: #d0c3cc;
+  --tag-line: #d0c3cc;
+  --accent: #6f2675;
+  --on-accent: #ffffff;
+  --accent-track: #f5dbf0;
+  --chip: #f5dbf0;
+  --chip-ink: #534152;
+  --switch-off: #ebdfe6;
 }
 
+/*
+ * In scuro le card sono più chiare del fondo, come vuole M3 per l'elevazione,
+ * e non hanno bordo. I riassunti usano onSurfaceVariant: su righe lunghe il
+ * testo pieno abbaglia.
+ */
 @media (prefers-color-scheme: dark) {
+  [data-section="news"] {
+    --surface: #0e1513;
+    --card: #252b2a;
+    --stripe: #171d1b;
+    --nav-surface: #1a211f;
+    --ink: #dde4e1;
+    --prose: #bec9c5;
+    --muted: #bec9c5;
+    --faint: #899390;
+    --rule: #3f4946;
+    --card-line: #252b2a;
+    --tag-line: #3f4946;
+    --accent: #81d6c7;
+    --on-accent: #003731;
+    --accent-track: #334b47;
+    --chip: #334b47;
+    --chip-ink: #cce8e2;
+    --switch-off: #303634;
+  }
+
   [data-section="papers"] {
-    --accent: #9aa2f5;
-    --accent-track: #2b2f55;
-    --chip: #23264a;
-    --chip-ink: #c0c5fa;
+    --surface: #131318;
+    --card: #2a292f;
+    --stripe: #1b1b21;
+    --nav-surface: #1f1f25;
+    --ink: #e4e1e9;
+    --prose: #c7c5d0;
+    --muted: #c7c5d0;
+    --faint: #91909a;
+    --rule: #46464f;
+    --card-line: #2a292f;
+    --tag-line: #46464f;
+    --accent: #bec2ff;
+    --on-accent: #111b93;
+    --accent-track: #444559;
+    --chip: #444559;
+    --chip-ink: #e1e0f9;
+    --switch-off: #34343a;
   }
 
   [data-section="queue"] {
-    --accent: #d595d8;
-    --accent-track: #47294c;
-    --chip: #3a2240;
-    --chip-ink: #ecc2ee;
+    --surface: #171216;
+    --card: #2e282d;
+    --stripe: #1f1a1f;
+    --nav-surface: #241e23;
+    --ink: #ebdfe6;
+    --prose: #d0c3cc;
+    --muted: #d0c3cc;
+    --faint: #998d96;
+    --rule: #4d444c;
+    --card-line: #2e282d;
+    --tag-line: #4d444c;
+    --accent: #ffa9ff;
+    --on-accent: #560a5e;
+    --accent-track: #534152;
+    --chip: #534152;
+    --chip-ink: #f5dbf0;
+    --switch-off: #393338;
+  }
+}
+
+/* Il fondo dietro la pagina, visibile solo trascinando oltre i bordi. */
+html {
+  background: #f4fbf8;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background: #0e1513;
   }
 }
 
 /*
- * Il fondo della navbar mobile prende un velo dell'accento della sezione.
- * Va calcolato qui, sull'elemento che ridefinisce `--accent`: una variabile
- * dichiarata su `:root` resterebbe legata all'accento di `:root`.
+ * Regole globali e classi di componente stanno nei layer di Tailwind: fuori
+ * dai layer vincerebbero su qualunque classe di utilità, e un `outline-none`
+ * o un `absolute` messo su un elemento verrebbe ignorato.
  */
-[data-section] {
-  --nav-surface: color-mix(in oklab, var(--surface) 94%, var(--accent));
+@layer base {
+  /* Indicatore di focus di M3: contorno spesso nel colore primario. */
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
-body {
-  @apply bg-canvas text-ink sm:bg-surface;
-}
+@layer components {
+  /*
+   * Livelli di stato di M3: un velo del colore del contenuto, 8% al passaggio
+   * del mouse, 10% al focus e alla pressione. Sta sotto il contenuto e prende
+   * la forma dell'elemento.
+   */
+  .state-layer,
+  .nav-indicator {
+    position: relative;
+    isolation: isolate;
+  }
 
-/*
- * Una riga del feed. Su mobile è una card con statistiche e segnalibro nella
- * fascia in fondo; da `sm` le statistiche affiancano etichette e tag e il
- * segnalibro sta a destra, alto. Le aree tengono un solo DOM per i due layout.
- * Le distanze verticali sono margini dei figli e non `row-gap`: un'area vuota
- * (nessun riassunto, nessuna etichetta) con `row-gap` lascerebbe un buco doppio.
- */
-.feed-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "meta meta"
-    "title title"
-    "summary summary"
-    "labels labels"
-    "stats actions";
-}
+  .state-layer::before,
+  .nav-indicator::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 150ms cubic-bezier(0.2, 0, 0, 1);
+    pointer-events: none;
+  }
 
-@media (width >= 40rem) {
+  @media (hover: hover) {
+    .state-layer:hover::before,
+    .nav-item:hover .nav-indicator::before {
+      opacity: 0.08;
+    }
+  }
+
+  .state-layer:focus-visible::before,
+  .nav-item:focus-visible .nav-indicator::before,
+  .state-layer:active::before,
+  .nav-item:active .nav-indicator::before {
+    opacity: 0.1;
+  }
+
+  /*
+   * L'onda di pressione di M3, generata da `spawnRipple` nel punto toccato.
+   * Con il movimento ridotto non parte: resta il livello di stato.
+   */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: currentColor;
+    pointer-events: none;
+    animation: ripple 450ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  }
+
+  /*
+   * Una riga del feed. Su mobile è una card con statistiche e segnalibro nella
+   * fascia in fondo; da `sm` le statistiche affiancano etichette e tag e il
+   * segnalibro sta a destra, alto. Le aree tengono un solo DOM per i due
+   * layout. Le distanze verticali sono margini dei figli e non `row-gap`:
+   * un'area vuota (nessun riassunto, nessuna etichetta) con `row-gap`
+   * lascerebbe un buco doppio.
+   */
   .feed-row {
-    grid-template-columns: auto 1fr auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
     grid-template-areas:
-      "meta meta actions"
-      "title title actions"
-      "summary summary actions"
-      "stats labels actions";
+      "meta meta"
+      "title title"
+      "summary summary"
+      "labels labels"
+      "stats actions";
+  }
+
+  @media (width >= 40rem) {
+    .feed-row {
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas:
+        "meta meta actions"
+        "title title actions"
+        "summary summary actions"
+        "stats labels actions";
+    }
+  }
+}
+
+@keyframes ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.16;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
   }
 }

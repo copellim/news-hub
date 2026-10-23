@@ -1,14 +1,19 @@
+import type { Viewport } from "next";
+
 import { FeedBoard } from "@/components/FeedBoard";
+import { themeColorOf } from "@/lib/sections";
 import { getLane } from "@/lib/sources";
 import { hasRedditCredentials } from "@/lib/sources/reddit";
+
+export const viewport: Viewport = { themeColor: themeColorOf("news") };
 
 export default async function NewsPage() {
   const lane = await getLane("news");
 
   return (
-    <div data-section="news" className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {!hasRedditCredentials() && (
-        <p className="mx-1 rounded-lg border border-card-line bg-surface px-4 py-3 text-sm text-muted sm:mx-4">
+        <p className="mx-1 rounded-xl border border-card-line bg-card px-4 py-3 text-sm text-muted sm:mx-4">
           <strong>r/programming è disattivata</strong>: mancano{" "}
           <code className="font-mono">REDDIT_CLIENT_ID</code> e{" "}
           <code className="font-mono">REDDIT_CLIENT_SECRET</code> in{" "}

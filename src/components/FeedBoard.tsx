@@ -234,17 +234,19 @@ export function FeedBoard({
         <div
           role="group"
           aria-label="Ordinamento"
-          className="flex w-full gap-5 border-b border-rule sm:w-auto sm:border-0"
+          className="-ml-2.5 flex w-[calc(100%+0.625rem)] gap-1 border-b border-rule sm:w-auto sm:border-0"
         >
+          {/* Tab primarie di M3: etichetta e indicatore nel colore primario,
+              indicatore di 3 px arrotondato in alto. */}
           {LANE_SORT_MODES[laneId].map((mode) => (
             <button
               key={mode}
               type="button"
               onClick={() => setSortMode(mode)}
               aria-pressed={sortMode === mode}
-              className={`pt-1 pb-3 ${
+              className={`state-layer rounded-t-lg px-2.5 pt-2 pb-3 ${
                 sortMode === mode
-                  ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--accent)]"
+                  ? "font-semibold text-accent after:absolute after:inset-x-2.5 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-accent"
                   : "hover:text-ink"
               }`}
             >
@@ -262,7 +264,7 @@ export function FeedBoard({
             <select
               value={perSource}
               onChange={(event) => setPerSource(Number(event.target.value))}
-              className="rounded-md border border-tag-line bg-surface px-1.5 py-1 text-ink"
+              className="h-8 rounded-lg border border-faint bg-surface px-1.5 text-ink"
             >
               {ITEMS_PER_SOURCE_OPTIONS.map((option: number) => (
                 <option key={option} value={option}>
@@ -312,24 +314,29 @@ function PeriodPicker({
   period: Period;
   onChange: (period: Period) => void;
 }) {
+  // Pulsante segmentato di M3: contorno pieno arrotondato, il segmento scelto
+  // in secondaryContainer con il segno di spunta davanti all'etichetta.
   return (
     <div
       role="group"
       aria-label="Periodo"
-      className="flex rounded-md border border-tag-line p-0.5"
+      className="flex h-8 overflow-hidden rounded-full border border-faint"
     >
-      {(Object.keys(PERIOD_LABELS) as Period[]).map((option) => (
+      {(Object.keys(PERIOD_LABELS) as Period[]).map((option, index) => (
         <button
           key={option}
           type="button"
           onClick={() => onChange(option)}
           aria-pressed={period === option}
-          className={`rounded px-2 py-0.5 ${
+          className={`state-layer flex items-center gap-1 px-3 ${
+            index > 0 ? "border-l border-faint" : ""
+          } ${
             period === option
               ? "bg-chip font-semibold text-chip-ink"
-              : "hover:text-ink"
+              : "text-ink"
           }`}
         >
+          {period === option && <CheckIcon />}
           {PERIOD_LABELS[option]}
         </button>
       ))}
@@ -337,6 +344,28 @@ function PeriodPicker({
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={16}
+      height={16}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+/**
+ * Interruttore di M3: binario di 52×32, da spento contornato con la maniglia
+ * piccola, da acceso pieno nel colore primario con la maniglia grande.
+ */
 function UnreadOnlySwitch({
   isOn,
   onChange,
@@ -345,21 +374,21 @@ function UnreadOnlySwitch({
   onChange: (isOn: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2">
+    <label className="flex cursor-pointer items-center gap-2.5">
       Solo non letti
       <button
         type="button"
         role="switch"
         aria-checked={isOn}
         onClick={() => onChange(!isOn)}
-        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-          isOn ? "bg-accent" : "bg-switch-off"
+        className={`relative h-8 w-13 shrink-0 rounded-full border-2 transition-colors duration-200 motion-reduce:transition-none ${
+          isOn ? "border-accent bg-accent" : "border-faint bg-switch-off"
         }`}
       >
         <span
           aria-hidden
-          className={`absolute top-0.5 size-4 rounded-full bg-white transition-[left] motion-reduce:transition-none ${
-            isOn ? "left-4.5" : "left-0.5"
+          className={`absolute top-1/2 -translate-y-1/2 rounded-full transition-all duration-200 motion-reduce:transition-none ${
+            isOn ? "left-5.5 size-6 bg-on-accent" : "left-1.5 size-4 bg-faint"
           }`}
         />
       </button>
