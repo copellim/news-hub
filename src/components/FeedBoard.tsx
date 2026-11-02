@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { loadLane } from "@/app/actions";
 import { ArxivCategoryFilter } from "@/components/ArxivCategoryFilter";
 import { PaperQualityDetails } from "@/components/PaperQualityDetails";
-import { verdictOf } from "@/lib/paper-quality/model";
+import { groupScreenedPapers, screeningCounts, screeningOrder } from "@/lib/paper-quality/model";
 import { useScreening } from "@/lib/paper-quality/use-screening";
 import { FeedList } from "@/components/FeedList";
 import { useNow } from "@/lib/now";
@@ -28,6 +28,7 @@ import {
   isLaneStale,
   LANE_SOURCES,
   rankWithinSource,
+  SOURCE_LABELS,
   sortItems,
   takePerSource,
   type Lane,
@@ -202,35 +203,24 @@ export function FeedBoard({
   );
 
   const screening = useScreening(
-    laneId === "papers" ? activeLane.items.map((item) => item.key) : [],
+    laneId === "papers" ? screeningOrder(activeLane.items) : [],
     categories,
     laneId === "papers" && screeningEnabled,
     settingsStatus === "ready",
     JSON.stringify(activeLane.fetchedAt),
   );
   const applyScreening = laneId === "papers" && screeningEnabled && settingsStatus === "ready";
-  const screenedItems = useMemo(() => applyScreening
-    ? periodItems.filter((item) => {
-        const result = screening.papers.get(item.key);
-        return result && verdictOf(result).verdict === "selected";
-      })
-    : periodItems, [periodItems, applyScreening, screening.papers]);
-  const outsideSelection = applyScreening ? periodItems.filter((item) => {
-    const result = screening.papers.get(item.key);
-    return result && verdictOf(result).verdict !== "selected";
-  }) : [];
-  const assessedCount = periodItems.filter((item) => screening.papers.has(item.key)).length;
-
-  const visible = useMemo(
-    () => ({
-      ...activeLane,
-      items: takePerSource(
-        filterByRead(sortItems(screenedItems, sortMode), readFilter, visitedKeys),
-        perSource,
-      ),
-    }),
-    [activeLane, screenedItems, perSource, readFilter, sortMode, visitedKeys],
+  const candidateItems = useMemo(
+    () => filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys),
+    [periodItems, sortMode, readFilter, visitedKeys],
   );
+  const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers), [candidateItems, screening.papers]);
+  const counts = useMemo(() => screeningCounts(candidateItems, screening.papers), [candidateItems, screening.papers]);
+  const visible = useMemo(() => ({
+    ...activeLane,
+    items: takePerSource(applyScreening ? [...groups.recommended, ...groups.review] : candidateItems, perSource),
+  }), [activeLane, applyScreening, groups, candidateItems, perSource]);
+  const visibleGroups = useMemo(() => groupScreenedPapers(visible.items, screening.papers), [visible.items, screening.papers]);
 
   const rankings = useMemo(
     () => ({
@@ -253,6 +243,15 @@ export function FeedBoard({
     categories,
     settingsStatus === "ready",
   );
+
+  const listProps = {
+    summaries, pendingSummaryKeys: pendingKeys, rankings,
+    paperQuality: laneId === "papers" ? screening.papers : undefined,
+    showPendingQuality: applyScreening,
+    barMetric: sortMode === "discussed" ? "commentCount" as const : "score" as const,
+    groupByAge: laneId === "news" && sortMode === "recent",
+    groupUnscored: !applyScreening && laneId === "papers" && sortMode === "ranked",
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -325,32 +324,40 @@ export function FeedBoard({
 
       {laneId === "papers" && screeningEnabled && (
         <div className="rounded-xl border border-rule bg-surface p-4 text-sm leading-relaxed text-muted" aria-live="polite">
-          <p>Selezione basata su pubblicazione, avvisi editoriali e analisi AI del PDF: affermazioni, validazione, riproducibilità e limiti. I preprint possono passare con evidenze sufficienti. Voti e interessi non influiscono.</p>
+          <p>Consigliati in cima, paper da valutare visibili sotto. Sono esclusi soltanto i lavori ritrattati o con difetti sostanziali documentati dall’analisi AI. Limiti e verifiche incomplete restano espliciti.</p>
           {settingsStatus === "ready" ? <>
-            <p className="mt-2 font-semibold text-ink">{screenedItems.length} selezionati · {outsideSelection.length} fuori selezione · {periodItems.length - assessedCount} in attesa{screening.running ? " · analisi in corso…" : ""}</p>
-            {screening.running && <p>La prima analisi richiede tempo e usa il servizio AI; i risultati vengono salvati e riutilizzati. Disattivando la scrematura interrompi i lotti successivi.</p>}
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <caption className="sr-only">Esiti della scrematura per fonte, prima del limite per fonte</caption>
+                <thead><tr><th scope="col" className="py-1 pr-2">Fonte</th><th scope="col" className="px-1 py-1">Consigliati</th><th scope="col" className="px-1 py-1">Da valutare</th><th scope="col" className="px-1 py-1">Esclusi</th><th scope="col" className="py-1 pl-1">In attesa</th></tr></thead>
+                <tbody>{LANE_SOURCES.papers.map((source) => {
+                  const stats = counts.get(source) ?? { recommended: 0, review: 0, excluded: 0, pending: 0 };
+                  return <tr key={source} className="border-t border-rule tabular-nums"><th scope="row" className="py-2 pr-2 font-semibold text-ink">{SOURCE_LABELS[source]}</th><td className="px-1">{stats.recommended}</td><td className="px-1">{stats.review}</td><td className="px-1">{stats.excluded}</td><td className="pl-1">{stats.pending}</td></tr>;
+                })}</tbody>
+              </table>
+            </div>
+            {screening.running && <p className="mt-2">Analisi in corso, alternando HF e arXiv. I paper in attesa restano visibili tra quelli da valutare; i risultati vengono salvati e riutilizzati.</p>}
             {screening.error && <p className="mt-2">{screening.error} <button type="button" className="font-semibold text-accent underline" onClick={screening.retry}>Riprova la scrematura</button></p>}
-          </> : <p className="mt-2">{settingsStatus === "loading" ? "Caricamento dell’account…" : "Accedi con un account disponibile per eseguire la scrematura. Per ora è mostrato l’elenco completo."}</p>}
+          </> : <p className="mt-2">{settingsStatus === "loading" ? "Caricamento dell’account…" : settingsStatus === "error" ? "Impostazioni dell’account non disponibili: per ora è mostrato l’elenco completo." : "Accedi per eseguire la scrematura. Per ora è mostrato l’elenco completo."}</p>}
         </div>
       )}
 
-      <FeedList
-        lane={visible}
-        emptyLabel={applyScreening ? (screening.running ? "Sto selezionando i paper: i risultati compariranno progressivamente." : "Nessun paper visibile soddisfa la selezione e gli altri filtri. Puoi consultare i risultati sotto o disattivare la scrematura.") : emptyLabel}
-        paperQuality={laneId === "papers" ? screening.papers : undefined}
-        summaries={summaries}
-        pendingSummaryKeys={pendingKeys}
-        rankings={rankings}
-        barMetric={sortMode === "discussed" ? "commentCount" : "score"}
-        // Solo per data: con una classifica le fasce la spezzerebbero, e
-        // "Prima" ripartirebbe dal 100% dopo che "Ultime 24 ore" era scesa.
-        groupByAge={laneId === "news" && sortMode === "recent"}
-        groupUnscored={laneId === "papers" && sortMode === "ranked"}
-      />
-      {outsideSelection.length > 0 && <details className="rounded-xl border border-rule p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-muted">Fuori selezione: {outsideSelection.length} paper · motivazioni e fonti</summary>
+      {applyScreening ? <>
+        <section className="flex flex-col gap-3" data-screening-group="recommended" aria-labelledby="recommended-papers">
+          <h2 id="recommended-papers" className="px-1 text-lg font-semibold text-ink sm:px-4">Consigliati · {visibleGroups.recommended.length}</h2>
+          <FeedList {...listProps} lane={{ ...visible, items: visibleGroups.recommended }} emptyLabel={screening.running ? "Le analisi sono in corso. I paper in attesa sono visibili sotto." : "Nessun consigliato tra i paper mostrati. Puoi consultare quelli da valutare."} />
+        </section>
+        {visibleGroups.review.length > 0 && <section className="flex flex-col gap-3" data-screening-group="review" aria-labelledby="review-papers">
+          <h2 id="review-papers" className="px-1 text-lg font-semibold text-ink sm:px-4">Da valutare · {visibleGroups.review.length}</h2>
+          <p className="px-1 text-sm text-muted sm:px-4">Limiti, informazioni mancanti o analisi in attesa: questi paper restano disponibili per la lettura.</p>
+          <FeedList {...listProps} lane={{ items: visibleGroups.review, failures: [] }} emptyLabel="Nessun paper da valutare." />
+        </section>}
+      </> : <FeedList {...listProps} lane={visible} emptyLabel={emptyLabel} />}
+
+      {applyScreening && groups.excluded.length > 0 && <details className="rounded-xl border border-rule p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-muted">Esclusi: {groups.excluded.length} paper · motivazioni e fonti</summary>
         <ol className="mt-4 flex flex-col gap-5">
-          {outsideSelection.map((item) => <li key={item.key}>
+          {groups.excluded.map((item) => <li key={item.key}>
             <a href={item.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-ink hover:underline">{item.title}</a>
             <PaperQualityDetails paper={screening.papers.get(item.key)!} />
           </li>)}

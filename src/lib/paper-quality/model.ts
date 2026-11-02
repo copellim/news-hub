@@ -1,8 +1,12 @@
+import type { FeedItem } from "@/lib/feed";
+
 /** Evidenze bibliografiche e valutazione del testo sono separate intenzionalmente. */
 export type Evidence = { label: string; url: string; detail: string };
 export type MethodCheck = {
   criterion: "claims" | "validation" | "reproducibility" | "limitations";
-  outcome: "supported" | "weak" | "unknown" | "na";
+  outcome: "supported" | "limitation" | "fatal" | "unknown" | "na" | "weak";
+  /** Obbligatorio per un difetto sostanziale: perché compromette il risultato principale. */
+  impact?: string;
   reference: string;
   detail: string;
 };
@@ -27,33 +31,81 @@ export type PaperQuality = {
   warnings: string[];
   assessment: MethodAssessment | null;
 };
-export type Verdict = "selected" | "excluded" | "unverified";
+export type Verdict = "recommended" | "review" | "excluded";
 export const QUALITY_VERSION = 1;
-export const METHOD_VERSION = 1;
+export const METHOD_VERSION = 2;
 export const PAPER_KEY = /^arxiv:(\d{4}\.\d{4,5})(?:v\d+)?$/;
 
 export function verdictOf(paper: PaperQuality): { verdict: Verdict; reason: string } {
   if (paper.integrity === "retracted") return { verdict: "excluded", reason: "Ritrattazione segnalata dalla fonte bibliografica." };
-  if (paper.integrity === "concern") return { verdict: "unverified", reason: "Segnalazione editoriale da verificare." };
   const assessment = paper.assessment;
-  if (!assessment) return { verdict: "unverified", reason: "Valutazione del testo completo non disponibile." };
+  if (!assessment) return { verdict: "review", reason: "Analisi del testo completo non disponibile: non è un giudizio negativo sul paper." };
+  if (assessment.version !== METHOD_VERSION) return { verdict: "review", reason: "Valutazione precedente da riesaminare con i criteri aggiornati." };
   const checks = assessment.checks;
-  if (checks.some((check) => check.outcome === "weak")) {
-    return { verdict: "excluded", reason: "La lettura AI segnala debolezze metodologiche: consulta le evidenze." };
+  const fatal = checks.find((check) => check.outcome === "fatal");
+  if (fatal) return { verdict: "excluded", reason: `L'analisi AI segnala un difetto sostanziale: ${fatal.impact}` };
+  if (paper.integrity === "concern") return { verdict: "review", reason: "Segnalazione editoriale da verificare." };
+  if (checks.some((check) => check.outcome === "unknown" || check.outcome === "weak")) {
+    return { verdict: "review", reason: "Alcuni aspetti restano da verificare; il paper rimane visibile." };
   }
-  if (checks.some((check) => check.outcome === "unknown")) {
-    return { verdict: "unverified", reason: "Il testo non offre evidenze sufficienti per completare la selezione." };
+  const coreSupported = ["claims", "validation"].every((criterion) => checks.some((check) => check.criterion === criterion && check.outcome === "supported"));
+  const reproduction = checks.find((check) => check.criterion === "reproducibility");
+  const reproducible = reproduction?.outcome === "supported" || reproduction?.outcome === "na";
+  // Peer review adds confidence to a limited verification path; it cannot rescue invalid core evidence.
+  if (coreSupported && (reproducible || (paper.publication === "verified" && reproduction?.outcome === "limitation")) && assessment.kind !== "other") {
+    return { verdict: "recommended", reason: paper.publication === "verified"
+      ? "Contributo e risultati supportati nel testo, con pubblicazione verificata. Consulta gli eventuali limiti."
+      : "Preprint con contributo e risultati supportati e metodo ricostruibile; peer review non verificata." };
   }
-  // Non bastano prestigio, numero di citazioni, voti o presenza di un repository.
-  if (paper.publication === "verified") return { verdict: "selected", reason: "Pubblicazione verificata e criteri metodologici supportati nel testo." };
-  if (checks.every((check) => check.outcome === "supported")) {
-    return { verdict: "selected", reason: "Preprint promettente: criteri supportati nel testo; peer review non verificata." };
-  }
-  return { verdict: "unverified", reason: "Peer review non verificata e criteri del preprint incompleti." };
+  return { verdict: "review", reason: "Contributo da valutare alla luce dei limiti documentati; nessun difetto sostanziale rilevato." };
 }
 
-export function parseAssessment(value: unknown): MethodAssessment | null {
-  if (!value || typeof value !== "object") return null;
+/** Round robin per fonte: i primi due paper di un lotto provengono da HF e arXiv, quando disponibili. */
+export function screeningOrder(items: readonly FeedItem[]): string[] {
+  const queues = new Map<string, string[]>();
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (seen.has(item.key)) continue;
+    seen.add(item.key);
+    const queue = queues.get(item.source) ?? [];
+    queue.push(item.key);
+    queues.set(item.source, queue);
+  }
+  const ordered: string[] = [];
+  const lists = [...queues.values()];
+  for (let index = 0; lists.some((list) => index < list.length); index++) {
+    for (const list of lists) if (list[index]) ordered.push(list[index]);
+  }
+  return ordered;
+}
+
+/** Preserva l'ordine scelto dentro ogni fascia e tiene visibili anche analisi mancanti o fallite. */
+export function groupScreenedPapers(items: readonly FeedItem[], papers: ReadonlyMap<string, PaperQuality>) {
+  const groups: Record<Verdict, FeedItem[]> = { recommended: [], review: [], excluded: [] };
+  const pending: FeedItem[] = [];
+  for (const item of items) {
+    const paper = papers.get(item.key);
+    if (!paper) pending.push(item);
+    else groups[verdictOf(paper).verdict].push(item);
+  }
+  groups.review.push(...pending);
+  return groups;
+}
+
+export function screeningCounts(items: readonly FeedItem[], papers: ReadonlyMap<string, PaperQuality>) {
+  const counts = new Map<string, { recommended: number; review: number; excluded: number; pending: number }>();
+  for (const item of items) {
+    const stats = counts.get(item.source) ?? { recommended: 0, review: 0, excluded: 0, pending: 0 };
+    const paper = papers.get(item.key);
+    if (paper) stats[verdictOf(paper).verdict]++;
+    else stats.pending++;
+    counts.set(item.source, stats);
+  }
+  return counts;
+}
+
+export function parseAssessment(value: unknown, version = METHOD_VERSION): MethodAssessment | null {
+  if (![1, METHOD_VERSION].includes(version) || !value || typeof value !== "object") return null;
   const candidate = value as MethodAssessment;
   if (!["empirical", "theory", "survey", "other"].includes(candidate.kind) ||
       typeof candidate.contribution !== "string" || !candidate.contribution.trim() || candidate.contribution.length > 1600 ||
@@ -65,13 +117,14 @@ export function parseAssessment(value: unknown): MethodAssessment | null {
   const criteria = new Set(["claims", "validation", "reproducibility", "limitations"]);
   for (const check of candidate.checks) {
     if (!check || !criteria.delete(check.criterion) ||
-        !["supported", "weak", "unknown", "na"].includes(check.outcome) ||
+        !(version === 1 ? ["supported", "weak", "unknown", "na"] : ["supported", "limitation", "fatal", "unknown", "na"]).includes(check.outcome) ||
         typeof check.detail !== "string" || !check.detail.trim() || check.detail.length > 2000 ||
         typeof check.reference !== "string" || check.reference.length > 400 ||
-        ((check.outcome === "supported" || check.outcome === "weak") && !check.reference.trim()) ||
-        (check.criterion !== "reproducibility" && check.outcome === "na")) return null;
+        (["supported", "weak", "fatal", "limitation"].includes(check.outcome) && !check.reference.trim()) ||
+        (check.criterion !== "reproducibility" && check.outcome === "na") ||
+        (check.outcome === "fatal" && (typeof check.impact !== "string" || !check.impact.trim() || check.impact.length > 1600))) return null;
   }
-  return { ...candidate, version: METHOD_VERSION, assessedAt: new Date().toISOString() };
+  return { ...candidate, version, assessedAt: new Date().toISOString() };
 }
 
 export function normalizedTitle(title: string): string {

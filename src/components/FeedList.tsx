@@ -81,6 +81,7 @@ export function FeedList({
   emptyLabel,
   rowAction,
   paperQuality,
+  showPendingQuality = false,
   summaries = NO_SUMMARIES,
   pendingSummaryKeys = NO_PENDING_KEYS,
   rankings,
@@ -93,6 +94,7 @@ export function FeedList({
   /** Azione extra accanto al segnalibro, es. "Letto" nella coda. */
   rowAction?: (item: FeedItem) => ReactNode;
   paperQuality?: ReadonlyMap<string, PaperQuality>;
+  showPendingQuality?: boolean;
   /** Riassunto in italiano per chiave, solo nella corsia Papers. */
   summaries?: ReadonlyMap<string, string>;
   /** Paper il cui riassunto si sta generando adesso. */
@@ -181,6 +183,7 @@ export function FeedList({
                     onOpenLink={openLink}
                     action={rowAction?.(item)}
                     quality={paperQuality?.get(item.key)}
+                    isQualityPending={showPendingQuality && !paperQuality?.has(item.key)}
                     summary={summaries.get(item.key) ?? null}
                     isSummaryPending={pendingSummaryKeys.has(item.key)}
                     scorePlace={rankings?.score.get(item.key) ?? null}
@@ -274,6 +277,7 @@ function FeedRow({
   item,
   isVisited,
   quality,
+  isQualityPending,
   onOpenLink,
   action,
   summary,
@@ -285,6 +289,7 @@ function FeedRow({
   item: FeedItem;
   isVisited: boolean;
   quality?: PaperQuality;
+  isQualityPending: boolean;
   /** Segna letto e, se si può, apre la card invece del sito. */
   onOpenLink: OpenLink;
   action: ReactNode;
@@ -297,7 +302,7 @@ function FeedRow({
   now: number | null;
 }) {
   const signals = signalsOf(item, scorePlace, now);
-  const hasLabels = signals.length > 0 || item.tags.length > 0 || Boolean(quality);
+  const hasLabels = signals.length > 0 || item.tags.length > 0 || Boolean(quality) || isQualityPending;
 
   return (
     <li className="feed-row rounded-xl border border-card-line bg-card sm:border-0 sm:bg-transparent sm:p-4 sm:even:bg-stripe">
@@ -335,6 +340,7 @@ function FeedRow({
       {hasLabels && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 px-4 text-[13px] [grid-area:labels] sm:mt-2.5 sm:px-0">
           {quality && <PaperQualityDetails paper={quality} />}
+          {isQualityPending && <span className="w-full py-1 text-sm text-muted">Da valutare · analisi in attesa</span>}
           {signals.map((signal) => (
             <span
               key={signal}

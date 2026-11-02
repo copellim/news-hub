@@ -418,7 +418,11 @@ ambiguità.
 selezione e persistenza JSONL su Blob. La route `/api/papers/screen` lavora
 su due paper alla volta, autenticati e presenti nei feed del server.
 `useScreening` alimenta progressivamente la pagina Papers: filtro attivo di
-default, interruttore salvato nell'account e risultati fuori selezione consultabili.
+default, interruttore salvato nell'account; Consigliati e Da valutare restano visibili,
+solo gli Esclusi sono nella sezione espandibile. I lotti alternano HF e arXiv.
+Il prompt metodologico v2 distingue limiti, informazioni mancanti e difetti
+sostanziali (questi ultimi richiedono riferimento e impatto sulla conclusione).
+Le valutazioni v1 restano da valutare fino al riesame, senza riusarle come v2.
 Dettagli delle regole, cache, fonti e limiti nel README, sezione Scrematura scientifica.
 Le recensioni OpenReview possono richiedere una challenge interattiva (403):
 si mantiene il venueid ufficiale quando disponibile, segnalando che le review

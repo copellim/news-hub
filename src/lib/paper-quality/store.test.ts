@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { METHOD_VERSION } from "./model";
 import { isFresh, parseQualityRecords } from "./store";
 const record = {
   revision: "2312.00752v2", title: "Paper", reviewFingerprint: "hash",
@@ -18,5 +19,12 @@ describe("persistenza delle verifiche", () => {
     expect(isFresh(aged, now)).toBe(false);
     aged.quality.warnings = [];
     expect(isFresh(aged, now + 86400000)).toBe(false);
+  });
+  it("conserva le valutazioni legacy ma le considera da riesaminare", () => {
+    const old = { ...record, quality: { ...record.quality, assessment: { version: 1, assessedAt: new Date().toISOString(), kind: "empirical", contribution: "Contributo precedente", checks: ["claims", "validation", "reproducibility", "limitations"].map((criterion) => ({ criterion, outcome: "weak", reference: "Sezione 4", detail: "Giudizio precedente" })) } } };
+    const loaded = parseQualityRecords(JSON.stringify(old)).get(record.quality.key)!;
+    expect(loaded.quality.assessment?.version).toBe(1);
+    expect(isFresh(loaded)).toBe(false);
+    expect(METHOD_VERSION).toBe(2);
   });
 });

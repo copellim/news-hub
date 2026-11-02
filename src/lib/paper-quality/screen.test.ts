@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(getPaperMetadata).mockImplementation(async () => ({ quality: metadata, revision: "2312.00752v2", reviewContext: "" }));
   vi.mocked(readQualityRecords).mockImplementation(async () => new Map(stored));
   vi.mocked(saveQualityRecords).mockImplementation(async (records) => { for (const record of records) stored.set(record.quality.key, record); });
-  vi.mocked(assessPaper).mockResolvedValue(parseAssessment({ kind: "theory", contribution: "Nuova dimostrazione", checks: ["claims", "validation", "reproducibility", "limitations"].map((criterion) => ({ criterion, outcome: "supported", reference: "Teorema 1, appendice A", detail: "Ipotesi e dimostrazione consultabili" })) })!);
+  vi.mocked(assessPaper).mockImplementation(async () => parseAssessment({ kind: "theory", contribution: "Nuova dimostrazione", checks: ["claims", "validation", "reproducibility", "limitations"].map((criterion) => ({ criterion, outcome: "supported", reference: "Teorema 1, appendice A", detail: "Ipotesi e dimostrazione consultabili" })) })!);
 });
 describe("scrematura completa e riuso delle analisi", () => {
   it("salva i risultati e non ripaga il PDF nelle visite successive", async () => {
@@ -61,5 +61,12 @@ describe("scrematura completa e riuso delle analisi", () => {
     expect(result.assessment).toBeNull();
     expect(result.warnings.length).toBe(1);
     expect(metadata.warnings).toEqual([]);
+  });
+  it("rigenera un giudizio legacy anche se i metadati sono ancora freschi", async () => {
+    await screenPapers([item]);
+    stored.get(item.key)!.quality.assessment!.version = 1;
+    await screenPapers([item]);
+    expect(assessPaper).toHaveBeenCalledTimes(2);
+    expect(stored.get(item.key)!.quality.assessment!.version).toBe(2);
   });
 });

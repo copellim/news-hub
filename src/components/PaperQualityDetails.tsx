@@ -1,8 +1,8 @@
 import { safeEvidenceUrl, verdictOf, type PaperQuality } from "@/lib/paper-quality/model";
 
 const CRITERIA = { claims: "Affermazioni", validation: "Validazione", reproducibility: "Riproducibilità", limitations: "Limiti" };
-const OUTCOMES = { supported: "supportato", weak: "debole", unknown: "non verificabile", na: "non pertinente" };
-const LABELS = { selected: "Selezionato", excluded: "Escluso dalla selezione", unverified: "Da verificare" };
+const OUTCOMES = { supported: "supportato", weak: "giudizio precedente da riesaminare", limitation: "limite", fatal: "difetto sostanziale", unknown: "non verificabile", na: "non pertinente" };
+const LABELS = { recommended: "Consigliato", excluded: "Escluso dalla selezione", review: "Da valutare" };
 
 export function PaperQualityDetails({ paper }: { paper: PaperQuality }) {
   const { verdict, reason } = verdictOf(paper);
@@ -20,6 +20,7 @@ export function PaperQualityDetails({ paper }: { paper: PaperQuality }) {
             {paper.assessment.checks.map((check) => <li key={check.criterion}>
               <strong className="text-ink">{CRITERIA[check.criterion]}: {OUTCOMES[check.outcome]}.</strong>{" "}
               {check.detail} {check.reference && <span>({check.reference})</span>}
+              {check.outcome === "fatal" && check.impact && <p className="mt-1 font-semibold text-ink">Effetto sulla conclusione principale: {check.impact}</p>}
             </li>)}
           </ul>
           <p>Valutazione AI del PDF: aiuta la selezione, non certifica i risultati né l&apos;esecuzione del codice.</p>

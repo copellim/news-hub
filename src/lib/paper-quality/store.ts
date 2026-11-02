@@ -21,7 +21,7 @@ export function parseQualityRecords(text: string | null): Map<string, QualityRec
           Array.isArray(record.quality.evidence) && record.quality.evidence.every((evidence) => evidence &&
             typeof evidence.label === "string" && typeof evidence.detail === "string" && safeEvidenceUrl(evidence.url)) &&
           (record.quality.assessment === null || (record.quality.assessment &&
-            Number.isFinite(Date.parse(record.quality.assessment.assessedAt)) && parseAssessment(record.quality.assessment)))) {
+            Number.isFinite(Date.parse(record.quality.assessment.assessedAt)) && parseAssessment(record.quality.assessment, record.quality.assessment.version)))) {
         records.set(record.quality.key, record);
       }
     } catch { /* Una riga rovinata non azzera gli altri risultati. */ }

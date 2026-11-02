@@ -106,15 +106,38 @@ Con l'accesso, ogni paper dei feed correnti passa per due controlli:
   non verificate. Disponibilità, contenuto vuoto e codice eseguito sono distinti:
   il codice non viene eseguito e un repository pubblico non certifica i risultati.
 
-La lista principale contiene solo i selezionati. Un lavoro con difetti
-metodologici documentati dall'analisi AI o ritrattato resta fuori; dati mancanti,
-errori di fonte e dubbi diventano **da verificare**, mai un giudizio scientifico
-negativo. I risultati fuori selezione restano consultabili sotto la lista,
-con motivazioni, limiti delle verifiche e link alle fonti. Un preprint può
-passare se tutti e quattro i criteri hanno evidenze sufficienti; una
-pubblicazione verificata consente un criterio di riproducibilità realmente
-non pertinente. Nessuna selezione usa attinenza, upvote, stelle o soglie di
-citazioni. La valutazione AI non certifica prove matematiche né esegue codice.
+La lista mostra **Consigliati** in cima e **Da valutare** sotto. Solo gli
+**Esclusi** restano nella sezione espandibile, con motivazioni e fonti.
+Anche i paper in attesa di analisi o con download/servizi non disponibili
+rimangono visibili tra quelli da valutare. I contatori distinguono i tre
+esiti e le attese per ogni fonte, applicando il filtro dei letti ma prima
+del limite per fonte. Il limite resta complessivo per fonte: prima prende i
+consigliati, poi quelli da valutare, mantenendo l'ordinamento scelto dentro
+ciascuna fascia.
+
+L'AI distingue quattro situazioni: evidenza adeguata, **limite** documentato,
+**informazione mancante** e **difetto sostanziale**. Solo quest'ultimo,
+con riferimento al PDF e spiegazione di come compromette una conclusione
+centrale, può causare esclusione. La ritrattazione resta motivo di esclusione;
+un avviso di preoccupazione editoriale richiede valutazione. Assenza di codice,
+modelli proprietari, dominio ristretto e pochi seed non sono difetti
+sostanziali automatici. Il controllo di disponibilità degli artefatti resta
+separato dalla valutazione metodologica.
+
+Per essere consigliato servono affermazioni e validazione supportate e un
+percorso di ricostruzione adeguato al contributo (anche non pertinente quando
+motivato). Limiti riconosciuti non annullano automaticamente un contributo
+solido. Una pubblicazione verificata aggiunge fiducia a una riproducibilità
+limitata, ma non riscatta una validazione insufficiente o un difetto sostanziale.
+Nessuna selezione usa attinenza, upvote, stelle o soglie di citazioni. La
+valutazione AI non certifica prove matematiche né esegue codice.
+
+Il prompt metodologico corrente è **v2**. Le valutazioni v1 rimangono
+leggibili nella cache per conservarne la storia, ma non producono esclusioni
+o raccomandazioni nuove: sono da valutare fino al riesame del PDF. La versione
+è verificata sia nella freschezza del record sia nel riuso dell'analisi.
+Il confronto di taratura su sei PDF è documentato in
+[docs/paper-screening-calibration.md](docs/paper-screening-calibration.md).
 
 Le pubblicazioni riconosciute sono configurate in
 `src/lib/paper-quality/metadata.ts`: il tipo Crossref da solo e la mera presenza
@@ -125,7 +148,8 @@ Il matching usa un id arXiv esatto oppure titolo e autore esatti. Crossref segue
 solo DOI espliciti e relazioni registrate verso la versione pubblicata.
 La copertura è incompleta: nessun avviso trovato non garantisce l'integrità.
 
-I primi risultati compaiono progressivamente, due PDF alla volta. La prima
+I primi risultati compaiono progressivamente, due PDF alla volta, alternando
+HF e arXiv fin dal primo lotto quando entrambe le fonti hanno paper. La prima
 visita può richiedere diversi minuti e consuma chiamate AI. Disattivare
 l'interruttore interrompe i lotti successivi; le richieste già ricevute dal server
 possono terminare. I metadati si ricontrollano dopo un giorno, con cache per
