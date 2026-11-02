@@ -4,11 +4,15 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { loadLane } from "@/app/actions";
 import { ArxivCategoryFilter } from "@/components/ArxivCategoryFilter";
+import { PaperQualityDetails } from "@/components/PaperQualityDetails";
+import { verdictOf } from "@/lib/paper-quality/model";
+import { useScreening } from "@/lib/paper-quality/use-screening";
 import { FeedList } from "@/components/FeedList";
 import { useNow } from "@/lib/now";
 import { usePaperSummaries } from "@/lib/paper-summaries";
 import {
   useArxivCategories,
+  usePaperScreening,
   useSettingsStatus,
   useVisitedItems,
 } from "@/lib/settings";
@@ -116,6 +120,7 @@ export function FeedBoard({
   const { categories, toggleCategory } = useArxivCategories();
   const { visitedKeys } = useVisitedItems();
   const settingsStatus = useSettingsStatus();
+  const { enabled: screeningEnabled, setEnabled: setScreeningEnabled } = usePaperScreening();
 
   const [loaded, setLoaded] = useState<Lane | null>(null);
   const [isBusy, startWork] = useTransition();
@@ -196,15 +201,35 @@ export function FeedBoard({
     [activeLane, periodNow],
   );
 
+  const screening = useScreening(
+    laneId === "papers" ? activeLane.items.map((item) => item.key) : [],
+    categories,
+    laneId === "papers" && screeningEnabled,
+    settingsStatus === "ready",
+    JSON.stringify(activeLane.fetchedAt),
+  );
+  const applyScreening = laneId === "papers" && screeningEnabled && settingsStatus === "ready";
+  const screenedItems = useMemo(() => applyScreening
+    ? periodItems.filter((item) => {
+        const result = screening.papers.get(item.key);
+        return result && verdictOf(result).verdict === "selected";
+      })
+    : periodItems, [periodItems, applyScreening, screening.papers]);
+  const outsideSelection = applyScreening ? periodItems.filter((item) => {
+    const result = screening.papers.get(item.key);
+    return result && verdictOf(result).verdict !== "selected";
+  }) : [];
+  const assessedCount = periodItems.filter((item) => screening.papers.has(item.key)).length;
+
   const visible = useMemo(
     () => ({
       ...activeLane,
       items: takePerSource(
-        filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys),
+        filterByRead(sortItems(screenedItems, sortMode), readFilter, visitedKeys),
         perSource,
       ),
     }),
-    [activeLane, periodItems, perSource, readFilter, sortMode, visitedKeys],
+    [activeLane, screenedItems, perSource, readFilter, sortMode, visitedKeys],
   );
 
   const rankings = useMemo(
@@ -276,6 +301,11 @@ export function FeedBoard({
             per fonte
           </label>
 
+          {laneId === "papers" && <UnreadOnlySwitch
+            label="Scrematura scientifica"
+            isOn={screeningEnabled}
+            onChange={setScreeningEnabled}
+          />}
           <UnreadOnlySwitch
             isOn={readFilter === "unread"}
             onChange={(isOn) => setReadFilter(isOn ? "unread" : "all")}
@@ -293,9 +323,21 @@ export function FeedBoard({
         />
       )}
 
+      {laneId === "papers" && screeningEnabled && (
+        <div className="rounded-xl border border-rule bg-surface p-4 text-sm leading-relaxed text-muted" aria-live="polite">
+          <p>Selezione basata su pubblicazione, avvisi editoriali e analisi AI del PDF: affermazioni, validazione, riproducibilità e limiti. I preprint possono passare con evidenze sufficienti. Voti e interessi non influiscono.</p>
+          {settingsStatus === "ready" ? <>
+            <p className="mt-2 font-semibold text-ink">{screenedItems.length} selezionati · {outsideSelection.length} fuori selezione · {periodItems.length - assessedCount} in attesa{screening.running ? " · analisi in corso…" : ""}</p>
+            {screening.running && <p>La prima analisi richiede tempo e usa il servizio AI; i risultati vengono salvati e riutilizzati. Disattivando la scrematura interrompi i lotti successivi.</p>}
+            {screening.error && <p className="mt-2">{screening.error} <button type="button" className="font-semibold text-accent underline" onClick={screening.retry}>Riprova la scrematura</button></p>}
+          </> : <p className="mt-2">{settingsStatus === "loading" ? "Caricamento dell’account…" : "Accedi con un account disponibile per eseguire la scrematura. Per ora è mostrato l’elenco completo."}</p>}
+        </div>
+      )}
+
       <FeedList
         lane={visible}
-        emptyLabel={emptyLabel}
+        emptyLabel={applyScreening ? (screening.running ? "Sto selezionando i paper: i risultati compariranno progressivamente." : "Nessun paper visibile soddisfa la selezione e gli altri filtri. Puoi consultare i risultati sotto o disattivare la scrematura.") : emptyLabel}
+        paperQuality={laneId === "papers" ? screening.papers : undefined}
         summaries={summaries}
         pendingSummaryKeys={pendingKeys}
         rankings={rankings}
@@ -305,6 +347,15 @@ export function FeedBoard({
         groupByAge={laneId === "news" && sortMode === "recent"}
         groupUnscored={laneId === "papers" && sortMode === "ranked"}
       />
+      {outsideSelection.length > 0 && <details className="rounded-xl border border-rule p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-muted">Fuori selezione: {outsideSelection.length} paper · motivazioni e fonti</summary>
+        <ol className="mt-4 flex flex-col gap-5">
+          {outsideSelection.map((item) => <li key={item.key}>
+            <a href={item.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-ink hover:underline">{item.title}</a>
+            <PaperQualityDetails paper={screening.papers.get(item.key)!} />
+          </li>)}
+        </ol>
+      </details>}
     </div>
   );
 }
@@ -369,18 +420,21 @@ function CheckIcon() {
  * piccola, da acceso pieno nel colore primario con la maniglia grande.
  */
 function UnreadOnlySwitch({
+  label = "Solo non letti",
   isOn,
   onChange,
 }: {
+  label?: string;
   isOn: boolean;
   onChange: (isOn: boolean) => void;
 }) {
   return (
     <label className="flex cursor-pointer items-center gap-2.5">
-      Solo non letti
+      {label}
       <button
         type="button"
         role="switch"
+        aria-label={label}
         aria-checked={isOn}
         onClick={() => onChange(!isOn)}
         className={`relative h-8 w-13 shrink-0 rounded-full border-2 transition-colors duration-200 motion-reduce:transition-none ${

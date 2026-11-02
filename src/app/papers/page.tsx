@@ -12,10 +12,10 @@ export default async function PapersPage() {
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-[66ch] px-1 text-sm leading-relaxed text-muted sm:px-4">
-        Il feed arXiv non ha voti: con &laquo;Più votati&raquo; finisce sotto
-        i paper HF, che invece li hanno. Con l&apos;accesso le categorie
-        scelte restano salvate nell&apos;account, e i paper mostrati ricevono
-        un riassunto in italiano.
+        La scrematura scientifica è attiva di default: verifica pubblicazione,
+        avvisi editoriali e solidità del metodo sul PDF completo. Puoi disattivarla
+        per vedere tutti i paper. Categorie e scrematura restano salvate
+        nell&apos;account; i risultati delle analisi vengono riutilizzati.
       </p>
       <FeedBoard
         lane={lane}

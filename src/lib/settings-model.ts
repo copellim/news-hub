@@ -18,7 +18,8 @@ export type Bookmark = FeedItem & {
 
 /** Tutto ciò che l'app ricorda di un utente, in un oggetto solo. */
 export type Settings = {
-  version: 1;
+  version: 2;
+  paperScreening: boolean;
   arxivCategories: string[];
   bookmarks: Bookmark[];
   /** Chiavi degli articoli aperti almeno una volta. */
@@ -32,7 +33,8 @@ export type Settings = {
 const MAX_VISITED = 2000;
 
 export const DEFAULT_SETTINGS: Settings = {
-  version: 1,
+  version: 2,
+  paperScreening: true,
   arxivCategories: [...DEFAULT_ARXIV_CATEGORIES],
   bookmarks: [],
   visited: [],
@@ -47,6 +49,7 @@ export type SettingsOperation =
   | { type: "addBookmark"; bookmark: Bookmark }
   | { type: "removeBookmark"; key: string }
   | { type: "markVisited"; key: string }
+  | { type: "setPaperScreening"; enabled: boolean }
   | { type: "setCategories"; categories: string[] }
   /** Recupero una tantum di quello che il browser teneva nel localStorage. */
   | { type: "mergeLocal"; settings: Settings };
@@ -84,6 +87,8 @@ function applyOperation(
         ...settings,
         visited: [operation.key, ...settings.visited].slice(0, MAX_VISITED),
       };
+    case "setPaperScreening":
+      return { ...settings, paperScreening: operation.enabled };
     case "setCategories":
       return { ...settings, arxivCategories: operation.categories };
     case "mergeLocal":
@@ -107,7 +112,8 @@ function mergeLocalSettings(remote: Settings, local: Settings): Settings {
     selectionKeyOf(DEFAULT_SETTINGS.arxivCategories);
 
   return {
-    version: 1,
+    version: 2,
+    paperScreening: remote.paperScreening,
     arxivCategories: hasDefaultCategories
       ? local.arxivCategories
       : remote.arxivCategories,
@@ -139,7 +145,8 @@ export function normalizeSettings(value: unknown): Settings | null {
   if (typeof value !== "object" || value === null) {
     return null;
   }
-  const candidate = value as Partial<Settings>;
+  const candidate = value as Partial<Omit<Settings, "version">> & { version?: number };
+  if (candidate.version !== 1 && candidate.version !== 2 && candidate.version !== undefined) return null;
   if (
     !Array.isArray(candidate.bookmarks) &&
     !Array.isArray(candidate.visited) &&
@@ -149,7 +156,10 @@ export function normalizeSettings(value: unknown): Settings | null {
   }
 
   return {
-    version: 1,
+    version: 2,
+    // Migrazione esplicita v1 → v2: conserva i dati e attiva la scrematura.
+    paperScreening: candidate.version === 2 && typeof candidate.paperScreening === "boolean"
+      ? candidate.paperScreening : true,
     arxivCategories: asArray(candidate.arxivCategories).filter(isCategory),
     bookmarks: asArray(candidate.bookmarks).filter(isBookmark),
     visited: asArray(candidate.visited)
@@ -171,6 +181,9 @@ export function parseSettingsOperation(
   }
   const candidate = value as Record<string, unknown>;
   switch (candidate.type) {
+    case "setPaperScreening":
+      return typeof candidate.enabled === "boolean"
+        ? { type: "setPaperScreening", enabled: candidate.enabled } : null;
     case "addBookmark":
       return isBookmark(candidate.bookmark)
         ? { type: "addBookmark", bookmark: candidate.bookmark }

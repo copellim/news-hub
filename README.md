@@ -85,6 +85,67 @@ card mostra l'abstract, il link al testo completo e, a richiesta, un riassunto
 del paper intero scritto da Claude Haiku dal PDF e salvato su Blob per le volte
 successive. Ctrl/Cmd+click apre ancora il sito in una scheda nuova.
 
+## Scrematura scientifica
+
+Nella pagina Papers l'interruttore **Scrematura scientifica** è attivo di
+base. La preferenza si salva nell'account; disattivandola torna subito
+l'elenco completo, con gli stessi filtri di categoria e lettura.
+
+Con l'accesso, ogni paper dei feed correnti passa per due controlli:
+
+- **Fonti bibliografiche**: arXiv e Semantic Scholar per identità e DOI,
+  Crossref per pubblicazione e avvisi editoriali (compresi Retraction Watch),
+  OpenReview per accettazioni e recensioni pubbliche, OpenAlex per
+  ritrattazioni e citazioni contestualizzate.
+- **PDF completo**: Haiku valuta affermazioni, validazione, riproducibilità
+  e limiti, distinguendo lavori empirici, teorici e survey. Ogni giudizio
+  sostanziale deve indicare una sezione, pagina o tabella. Le recensioni
+  pubbliche, quando recuperabili, entrano come contesto nella valutazione.
+  I link agli artefatti estratti dal PDF vengono controllati tramite le API
+  pubbliche di GitHub, Hugging Face e Zenodo; altri servizi restano dichiarazioni
+  non verificate. Disponibilità, contenuto vuoto e codice eseguito sono distinti:
+  il codice non viene eseguito e un repository pubblico non certifica i risultati.
+
+La lista principale contiene solo i selezionati. Un lavoro con difetti
+metodologici documentati dall'analisi AI o ritrattato resta fuori; dati mancanti,
+errori di fonte e dubbi diventano **da verificare**, mai un giudizio scientifico
+negativo. I risultati fuori selezione restano consultabili sotto la lista,
+con motivazioni, limiti delle verifiche e link alle fonti. Un preprint può
+passare se tutti e quattro i criteri hanno evidenze sufficienti; una
+pubblicazione verificata consente un criterio di riproducibilità realmente
+non pertinente. Nessuna selezione usa attinenza, upvote, stelle o soglie di
+citazioni. La valutazione AI non certifica prove matematiche né esegue codice.
+
+Le pubblicazioni riconosciute sono configurate in
+`src/lib/paper-quality/metadata.ts`: il tipo Crossref da solo e la mera presenza
+su OpenReview non bastano. OpenReview usa il `venueid` ufficiale di accettazione;
+quando le decisioni pubbliche sono accessibili vengono controllate anche quelle.
+Workshop e submission rifiutate non diventano accettazioni della main track.
+Il matching usa un id arXiv esatto oppure titolo e autore esatti. Crossref segue
+solo DOI espliciti e relazioni registrate verso la versione pubblicata.
+La copertura è incompleta: nessun avviso trovato non garantisce l'integrità.
+
+I primi risultati compaiono progressivamente, due PDF alla volta. La prima
+visita può richiedere diversi minuti e consuma chiamate AI. Disattivare
+l'interruttore interrompe i lotti successivi; le richieste già ricevute dal server
+possono terminare. I metadati si ricontrollano dopo un giorno, con cache per
+fonte di un'ora; gli errori hanno una scadenza più breve. L'analisi AI si riusa
+fino a 30 giorni per la stessa revisione e le stesse recensioni. Nuove revisioni,
+review o versioni del prompt invalidano il riuso al controllo successivo.
+
+I risultati stanno in `paper-quality.jsonl` su Blob, condivisi tra utenti,
+con scritture a lotti e rimozione dei record non ricontrollati da 30 giorni.
+Si rivalutano i paper ancora nei feed: non è un archivio di monitoraggio dei
+paper usciti dal feed. L'API accetta solo chiavi presenti nei feed del server,
+richiede login e Blob e non usa titoli o PDF forniti dal client.
+Senza login resta visibile il feed completo; senza configurazione AI la
+valutazione metodologica resta non disponibile. Le chiavi OpenAlex e Semantic
+Scholar sono opzionali ma consigliate per limitare i rate limit: vedi `.env.example`.
+
+Le impostazioni passano da v1 a **v2** con migrazione esplicita che conserva
+categorie, segnalibri e letti e attiva la scrematura. La disattivazione è
+un'operazione indipendente, così non sovrascrive le modifiche di altre schede.
+
 ## Account e impostazioni
 
 Senza accesso si vedono solo le liste di News e Papers. Con l'accesso Google,
@@ -95,7 +156,7 @@ Categorie arXiv, segnalibri e articoli letti stanno in **un file JSON per
 utente** su Blob:
 
 ```jsonc
-{ "version": 1, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
+{ "version": 2, "paperScreening": true, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
 ```
 
 Le modifiche si vedono subito e si salvano a lotti qualche secondo dopo. Quello

@@ -111,6 +111,14 @@ export function useVisitedItems() {
   return { visitedKeys, markVisited };
 }
 
+export function usePaperScreening() {
+  const { settings } = useSnapshot();
+  const setEnabled = useCallback((enabled: boolean) => {
+    enqueue({ type: "setPaperScreening", enabled });
+  }, []);
+  return { enabled: settings.paperScreening, setEnabled };
+}
+
 export function useArxivCategories() {
   const { settings } = useSnapshot();
 
@@ -167,7 +175,7 @@ function publish(next: SettingsSnapshot): void {
 function enqueue(operation: SettingsOperation): void {
   const { status, settings } = snapshot;
   if (status === "signedOut" || status === "error") {
-    if (operation.type === "setCategories") {
+    if (operation.type === "setCategories" || operation.type === "setPaperScreening") {
       publish({ status, settings: applyOperations(settings, [operation]) });
     }
     return;

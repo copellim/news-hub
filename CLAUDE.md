@@ -153,9 +153,6 @@ vedi `.env.example`. Senza credenziali la corsia resta vuota e la pagina lo dice
 
 ## Non ancora fatto (deciso, rimandato)
 
-- **OpenReview** come arricchimento (badge "accettato a ICLR, review 8/6/6" su un
-  id arXiv), non come sorgente di lista: non ha un flusso cronologico sensato.
-  Da riverificare: `api2.openreview.net` ha risposto 403 in test da CLI.
 - **Riviste** (JMLR, Nature Machine Intelligence) in una terza corsia a bassa
   velocità: ~1-2 item a settimana, annegherebbero se mescolati ad arXiv.
   Attenzione: il feed Nature è RSS 1.0/RDF, non RSS 2.0.
@@ -184,13 +181,14 @@ tutte.
 con la forma:
 
 ```jsonc
-{ "version": 1, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
+{ "version": 2, "paperScreening": true, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
 ```
 
 `src/lib/settings.ts` è l'unico posto che parla con `/api/settings`. Espone tre
 viste di dominio (`useBookmarks`, `useVisitedItems`, `useArxivCategories`) più
-`useSettingsStatus` (`loading` / `signedOut` / `ready` / `error`). Cambiare la
-forma dei dati richiede una `version: 2`, non una migrazione silenziosa.
+`useSettingsStatus` (`loading` / `signedOut` / `ready` / `error`). La versione corrente è 2: `normalizeSettings` migra esplicitamente v1
+conservando i dati e attivando `paperScreening`. Cambi futuri richiedono una nuova
+versione e una migrazione esplicita.
 
 - **Il client manda operazioni, non l'oggetto** (`SettingsOperation` in
   `settings-model.ts`): il server le applica all'ultima versione del file. Con
@@ -413,3 +411,15 @@ Dopo una navigazione client la route precedente **resta nel DOM** con
 bug e non è DOM orfano: i test end-to-end devono scopare i selettori sulla
 pagina visibile, altrimenti pescano elementi nascosti e i click falliscono per
 ambiguità.
+
+## Scrematura scientifica
+
+`src/lib/paper-quality/` separa metadati, analisi AI del PDF, regole di
+selezione e persistenza JSONL su Blob. La route `/api/papers/screen` lavora
+su due paper alla volta, autenticati e presenti nei feed del server.
+`useScreening` alimenta progressivamente la pagina Papers: filtro attivo di
+default, interruttore salvato nell'account e risultati fuori selezione consultabili.
+Dettagli delle regole, cache, fonti e limiti nel README, sezione Scrematura scientifica.
+Le recensioni OpenReview possono richiedere una challenge interattiva (403):
+si mantiene il venueid ufficiale quando disponibile, segnalando che le review
+non sono state lette. Non aggirare la challenge e non dedurre rifiuti da errori.

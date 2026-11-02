@@ -2,6 +2,9 @@
 
 import { useState, type MouseEvent, type ReactNode } from "react";
 
+import { PaperQualityDetails } from "@/components/PaperQualityDetails";
+import type { PaperQuality } from "@/lib/paper-quality/model";
+
 import { PublishedAt } from "@/components/PublishedAt";
 import { ReaderSheet, type ReaderTab } from "@/components/ReaderSheet";
 import { SaveToQueueButton } from "@/components/SaveToQueueButton";
@@ -77,6 +80,7 @@ export function FeedList({
   lane,
   emptyLabel,
   rowAction,
+  paperQuality,
   summaries = NO_SUMMARIES,
   pendingSummaryKeys = NO_PENDING_KEYS,
   rankings,
@@ -88,6 +92,7 @@ export function FeedList({
   emptyLabel: string;
   /** Azione extra accanto al segnalibro, es. "Letto" nella coda. */
   rowAction?: (item: FeedItem) => ReactNode;
+  paperQuality?: ReadonlyMap<string, PaperQuality>;
   /** Riassunto in italiano per chiave, solo nella corsia Papers. */
   summaries?: ReadonlyMap<string, string>;
   /** Paper il cui riassunto si sta generando adesso. */
@@ -175,6 +180,7 @@ export function FeedList({
                     isVisited={visitedKeys.has(item.key)}
                     onOpenLink={openLink}
                     action={rowAction?.(item)}
+                    quality={paperQuality?.get(item.key)}
                     summary={summaries.get(item.key) ?? null}
                     isSummaryPending={pendingSummaryKeys.has(item.key)}
                     scorePlace={rankings?.score.get(item.key) ?? null}
@@ -267,6 +273,7 @@ function groupsByScore(items: FeedItem[]): ItemGroup[] {
 function FeedRow({
   item,
   isVisited,
+  quality,
   onOpenLink,
   action,
   summary,
@@ -277,6 +284,7 @@ function FeedRow({
 }: {
   item: FeedItem;
   isVisited: boolean;
+  quality?: PaperQuality;
   /** Segna letto e, se si può, apre la card invece del sito. */
   onOpenLink: OpenLink;
   action: ReactNode;
@@ -289,7 +297,7 @@ function FeedRow({
   now: number | null;
 }) {
   const signals = signalsOf(item, scorePlace, now);
-  const hasLabels = signals.length > 0 || item.tags.length > 0;
+  const hasLabels = signals.length > 0 || item.tags.length > 0 || Boolean(quality);
 
   return (
     <li className="feed-row rounded-xl border border-card-line bg-card sm:border-0 sm:bg-transparent sm:p-4 sm:even:bg-stripe">
@@ -326,6 +334,7 @@ function FeedRow({
 
       {hasLabels && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 px-4 text-[13px] [grid-area:labels] sm:mt-2.5 sm:px-0">
+          {quality && <PaperQualityDetails paper={quality} />}
           {signals.map((signal) => (
             <span
               key={signal}
