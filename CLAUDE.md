@@ -91,9 +91,13 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 
 ## Decisioni da non ribaltare senza motivo
 
-- **Papers parte da Equilibrato.** Alterna HF e arXiv dentro ogni fascia di
-  qualità, anche dopo la partizione dei verdetti; i voti servono soltanto a
-  ordinare dentro HF. Le News mantengono Più votati come default.
+- **Papers ha due sole viste: Valutazione scientifica e Più recenti.** La prima
+  raggruppa i verdetti, la seconda ordina globalmente per data. I voti sono
+  riservati alle News e non devono dare precedenza a HF nei paper.
+- **Minimo 20 candidati per canale paper prima della scrematura.** Ogni fonte
+  si recupera indipendentemente. Il pool arXiv ha margine di 100 prima della
+  deduplica con HF, poi ciascuna fonte è limitata a 50. I duplicati non devono
+  azzerare arXiv. Quantità insufficienti e recuperi parziali sono segnalati.
 - **Ranking per posizione dentro la propria fonte (Più votati/Più discussi).** 1551 punti HN e 163 di
   Lobsters non sono la stessa unità, ma "terzo su 50 di HN" e "secondo su 25
   di Lobsters" sì: si ordina sulla quota della fonte che l'item ha sotto di sé
@@ -141,7 +145,12 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
   la chiave combacia esatta. Sul lato news la chiave è `<fonte>:<id nativo>`.
 - **HN via Algolia, non Firebase.** `?tags=front_page` restituisce gli item già
   idratati in una chiamata; `topstories.json` dà solo id e costringe a un N+1.
-- **arXiv via RSS, non via API.** I termini della API chiedono ~1 req/3s.
+- **arXiv: RSS più liste recenti ufficiali.** Se gli annunci sono insufficienti,
+  usa `recent` e fino a tre mesi precedenti; richieste serializzate a 3 s per
+  worker e cache oraria. Il solo RSS giornaliero può essere vuoto anche quando
+  esistono centinaia di paper recenti. Gli abstract mancanti si leggono su
+  `abs` a richiesta per paper già nel pool. Non usare l'API export come unico
+  recupero: nei test reali ha risposto con timeout.
 - **Una fonte giù non abbatte la corsia**: `Promise.allSettled` e l'errore
   compare in pagina con il nome della fonte.
 

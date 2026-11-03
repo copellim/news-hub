@@ -416,7 +416,9 @@ function Stats({
   bar: PlaceBarValue | null;
   onOpenLink: OpenLink;
 }) {
-  const isHeated = isHeatedDiscussion(item);
+  const showScore = !LANE_SOURCES.papers.includes(item.source);
+  if (!showScore && !item.discussionUrl) return null;
+  const isHeated = showScore && isHeatedDiscussion(item);
   const scoreUnit = LANE_SOURCES.papers.includes(item.source) ? "voti" : "punti";
   // La barretta sta accanto al numero che decide l'ordine.
   const barFor = (metric: SourceMetric) =>
@@ -426,7 +428,7 @@ function Stats({
 
   return (
     <div className="mt-3 flex min-h-11 items-center gap-x-3 border-t border-rule pl-4 text-sm whitespace-nowrap text-muted [grid-area:stats] sm:mt-2.5 sm:mr-3 sm:min-h-6 sm:self-start sm:border-0 sm:pl-0">
-      {typeof item.score === "number" ? (
+      {showScore && (typeof item.score === "number" ? (
         <span className="inline-flex items-center gap-3">
           {barFor("score")}
           <span>
@@ -436,7 +438,7 @@ function Stats({
         </span>
       ) : (
         <span>senza voti</span>
-      )}
+      ))}
       {item.discussionUrl && (
         <span className="inline-flex items-center gap-3">
           {barFor("commentCount")}
@@ -503,15 +505,16 @@ function signalsOf(
 ): string[] {
   const signals: string[] = [];
   const sourceName = SOURCE_SHORT_LABELS[item.source];
-  if (scorePlace?.position === 1) {
+  const showPopularity = !LANE_SOURCES.papers.includes(item.source);
+  if (showPopularity && scorePlace?.position === 1) {
     signals.push(`Il più votato su ${sourceName}`);
   } else if (
-    scorePlace &&
+    showPopularity && scorePlace &&
     scorePlace.position / scorePlace.outOf <= TOP_FRACTION
   ) {
     signals.push(`In cima a ${sourceName}`);
   }
-  if (isHeatedDiscussion(item)) {
+  if (showPopularity && isHeatedDiscussion(item)) {
     signals.push("Discussione accesa");
   }
   if (

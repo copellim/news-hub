@@ -1,187 +1,132 @@
 import "server-only";
 
 import { XMLParser } from "fast-xml-parser";
+import { parseHTML } from "linkedom";
 import { cacheLife } from "next/cache";
+import { ARXIV_CANDIDATE_LIMIT, isKnownArxivCategory } from "@/lib/config";
+import type { FeedItem, SourceSnapshot } from "@/lib/feed";
+import { fetchArxivText } from "./arxiv-request";
 
-import { isKnownArxivCategory, SOURCE_FETCH_LIMIT } from "@/lib/config";
-import { dedupeByKey, type FeedItem, type SourceSnapshot } from "@/lib/feed";
-import { fetchText } from "./http";
-
-/**
- * RSS invece della API: i termini della API chiedono ~1 richiesta ogni 3s, il
- * feed è una sola chiamata per categoria e basta. Si aggiorna una volta al
- * giorno intorno a mezzanotte ET e salta il weekend — un feed vuoto di sabato
- * non è un guasto.
- */
-const FEED_BASE_URL = "https://rss.arxiv.org/rss/";
-
-/** `replace` sono revisioni di paper già annunciati: rumore in un feed di novità. */
 const ANNOUNCED_TYPES = new Set(["new", "cross"]);
+const parser = new XMLParser({ ignoreAttributes: true, isArray: (name) => name === "item" });
+type RssItem = { title: string; link: string; description: string; category: string | string[]; pubDate: string; "arxiv:announce_type"?: string; "dc:creator"?: string };
+export type ArxivEntry = { item: FeedItem; abstract: string };
+type CategoryFeed = { entries: ArxivEntry[]; fetchedAt: string; recent: boolean; warnings: string[] };
 
-type RssItem = {
-  title: string;
-  link: string;
-  description: string;
-  category: string | string[];
-  pubDate: string;
-  "arxiv:announce_type"?: string;
-  "dc:creator"?: string;
-};
-
-const parser = new XMLParser({
-  ignoreAttributes: true,
-  // Un feed con un solo item non deve degenerare in oggetto invece che array.
-  isArray: (name) => name === "item",
-});
-
-/**
- * L'item per la pagina più l'abstract per i riassunti. L'abstract resta sul
- * server: mandarlo al client per decine di paper appesantirebbe la pagina.
- */
-type ArxivEntry = {
-  item: FeedItem;
-  abstract: string;
-};
-
-type CategoryFeed = { entries: ArxivEntry[]; fetchedAt: string };
-
-/**
- * Cache **per categoria**: la chiave è la sola categoria, così cambiare
- * selezione riusa i feed già scaricati invece di rifare le richieste. I feed
- * cambiano una volta al giorno, ma `hours` e non `days`: con `days` un feed
- * scaricato poco prima dell'aggiornamento di mezzanotte ET resterebbe in pagina
- * per un altro giorno intero.
- */
 async function getCategoryFeed(category: string): Promise<CategoryFeed> {
   "use cache";
   cacheLife("hours");
-
-  return {
-    entries: await fetchCategory(category),
-    fetchedAt: new Date().toISOString(),
-  };
-}
-
-export async function getArxivSnapshot(
-  categories: readonly string[],
-): Promise<SourceSnapshot> {
-  const feeds = await getCategoryFeeds(categories);
-  const entries = interleave(feeds.map((feed) => feed.entries));
-  return {
-    // Le categorie si sovrappongono: lo stesso paper esce su cs.AI e cs.LG.
-    items: dedupeByKey(entries.map((entry) => entry.item)).slice(
-      0,
-      SOURCE_FETCH_LIMIT,
-    ),
-    fetchedAt: oldestFetchOf(feeds),
-  };
-}
-
-/**
- * Un paper a turno da ogni categoria, ciascuna nell'ordine del suo feed.
- * Concatenando, il taglio a `SOURCE_FETCH_LIMIT` terrebbe solo la prima
- * categoria: cs.AI da sola annuncia centinaia di paper al giorno.
- */
-function interleave<T>(lists: T[][]): T[] {
-  const longest = Math.max(0, ...lists.map((list) => list.length));
-  const interleaved: T[] = [];
-  for (let index = 0; index < longest; index++) {
-    for (const list of lists) {
-      if (index < list.length) {
-        interleaved.push(list[index]);
+  let entries: ArxivEntry[] = [];
+  const warnings: string[] = [];
+  try { entries = parseArxivRss(await fetchArxivText(`https://rss.arxiv.org/rss/${category}`)); }
+  catch { warnings.push(`RSS ${category} non disponibile`); }
+  const recent = entries.length < ARXIV_CANDIDATE_LIMIT;
+  if (recent) {
+    try {
+      entries = uniqueEntries([...entries, ...parseArxivListing(await fetchArxivText(`https://arxiv.org/list/${category}/recent?skip=0&show=${ARXIV_CANDIDATE_LIMIT}`))]);
+      // Le categorie poco attive possono avere meno di 20 paper nell'ultima settimana.
+      const now = new Date();
+      for (let monthsBack = 1; entries.length < ARXIV_CANDIDATE_LIMIT && monthsBack <= 3; monthsBack++) {
+        const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsBack, 1));
+        const month = `${String(date.getUTCFullYear()).slice(-2)}${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+        entries = uniqueEntries([...entries, ...parseArxivListing(await fetchArxivText(`https://arxiv.org/list/${category}/${month}?skip=0&show=${ARXIV_CANDIDATE_LIMIT}`))]);
       }
-    }
+    } catch { warnings.push(`Recupero dei paper recenti di ${category} incompleto`); }
   }
-  return interleaved;
+  if (!entries.length && warnings.length) throw new Error(warnings.join("; "));
+  return { entries: uniqueEntries(entries).slice(0, ARXIV_CANDIDATE_LIMIT), fetchedAt: new Date().toISOString(), recent, warnings };
 }
 
-/** Titolo e abstract per chiave, dagli stessi feed in cache che riempiono la pagina. */
-export async function getArxivTexts(
-  categories: readonly string[],
-): Promise<Map<string, { title: string; abstract: string }>> {
-  const feeds = await getCategoryFeeds(categories);
-  return new Map(
-    feeds
-      .flatMap((feed) => feed.entries)
-      .map(({ item, abstract }) => [item.key, { title: item.title, abstract }]),
-  );
-}
-
-async function getCategoryFeeds(
-  categories: readonly string[],
-): Promise<CategoryFeed[]> {
-  // Seconda barriera oltre a quella della Server Action: la categoria finisce
-  // in un URL, e questa funzione è raggiungibile anche da altri chiamanti.
-  const allowed = categories.filter(isKnownArxivCategory);
-  return Promise.all(allowed.map(getCategoryFeed));
-}
-
-/**
- * La fonte è vecchia quanto la sua categoria più vecchia. Senza categorie non
- * c'è niente di vecchio: vale adesso.
- */
-function oldestFetchOf(feeds: CategoryFeed[]): string {
-  if (feeds.length === 0) {
-    return new Date().toISOString();
+async function getPool(categories: readonly string[]) {
+  const allowed = [...new Set(categories.filter(isKnownArxivCategory))];
+  const results = await Promise.allSettled(allowed.map(getCategoryFeed));
+  const feeds = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  if (allowed.length && !feeds.length) throw new Error("arXiv: impossibile recuperare RSS e liste recenti delle categorie selezionate");
+  const entries: ArxivEntry[] = [];
+  for (let index = 0; feeds.some((feed) => index < feed.entries.length); index++) {
+    for (const feed of feeds) if (feed.entries[index]) entries.push(feed.entries[index]);
   }
-  return feeds
-    .map((feed) => feed.fetchedAt)
-    .reduce((oldest, fetchedAt) => (fetchedAt < oldest ? fetchedAt : oldest));
-}
-
-async function fetchCategory(category: string): Promise<ArxivEntry[]> {
-  const xml = await fetchText("arxiv", `${FEED_BASE_URL}${category}`);
-  const parsed = parser.parse(xml) as {
-    rss?: { channel?: { item?: RssItem[] } };
-  };
-  const items = parsed.rss?.channel?.item ?? [];
-
-  return items
-    .filter((item) => ANNOUNCED_TYPES.has(item["arxiv:announce_type"] ?? "new"))
-    .map((item) => ({
-      item: toFeedItem(item),
-      abstract: abstractOf(item.description),
-    }));
-}
-
-/**
- * La `description` del feed comincia con un'intestazione
- * (`arXiv:2610.28637v1 Announce Type: new Abstract: …`): resta solo il testo.
- */
-function abstractOf(description: string): string {
-  const marker = "Abstract:";
-  const start = description.indexOf(marker);
-  return (start === -1
-    ? description
-    : description.slice(start + marker.length)
-  ).trim();
-}
-
-function toFeedItem(item: RssItem): FeedItem {
-  const arxivId = arxivIdFromLink(item.link);
   return {
-    key: `arxiv:${arxivId}`,
-    source: "arxiv",
-    title: item.title,
-    url: item.link,
-    discussionUrl: null,
-    // arXiv non ha alcun segnale di popolarità: mostrarne uno finto ingannerebbe.
-    score: null,
-    commentCount: null,
-    author: firstAuthor(item["dc:creator"]),
-    publishedAt: new Date(item.pubDate).toISOString(),
-    tags: [item.category].flat().slice(0, 3),
+    entries: uniqueEntries(entries).slice(0, ARXIV_CANDIDATE_LIMIT),
+    fetchedAt: feeds.map((feed) => feed.fetchedAt).sort()[0] ?? new Date().toISOString(),
+    notices: [
+      ...(feeds.some((feed) => feed.recent) ? ["arXiv: integrati gli annunci RSS con le liste recenti ufficiali, includendo giorni precedenti."] : []),
+      ...feeds.flatMap((feed) => feed.warnings),
+      ...results.flatMap((result, index) => result.status === "rejected" ? [`Categoria arXiv ${allowed[index]} non disponibile`] : []),
+    ],
   };
 }
 
-function arxivIdFromLink(link: string): string {
-  return link.replace(/^https?:\/\/arxiv\.org\/abs\//, "");
+export async function getArxivSnapshot(categories: readonly string[]): Promise<SourceSnapshot> {
+  const pool = await getPool(categories);
+  // Il margine viene tagliato a 50 DOPO la deduplicazione con HF in getLane.
+  return { items: pool.entries.map((entry) => entry.item), fetchedAt: pool.fetchedAt, notice: pool.notices.join(" · ") || undefined };
 }
 
-function firstAuthor(creator: string | undefined): string | null {
-  if (!creator) {
-    return null;
+export async function getArxivTexts(categories: readonly string[], keys: readonly string[] = []): Promise<Map<string, { title: string; abstract: string }>> {
+  const pool = await getPool(categories);
+  const requested = new Set(keys);
+  return new Map(await Promise.all(pool.entries.filter((entry) => requested.has(entry.item.key)).map(async (entry) => {
+    const abstract = entry.abstract || await getAbstract(entry.item.key.slice(6)).catch(() => "");
+    return [entry.item.key, { title: entry.item.title, abstract }] as const;
+  })));
+}
+
+async function getAbstract(id: string): Promise<string> {
+  "use cache";
+  cacheLife("hours");
+  if (!/^\d{4}\.\d{4,5}$/.test(id)) return "";
+  const { document } = parseHTML(await fetchArxivText(`https://arxiv.org/abs/${id}`));
+  return clean(document.querySelector('meta[name="citation_abstract"]')?.getAttribute("content") ?? document.querySelector("blockquote.abstract")?.textContent?.replace(/^\s*Abstract:\s*/, "") ?? "");
+}
+
+export function parseArxivRss(xml: string): ArxivEntry[] {
+  const parsed = parser.parse(xml) as { rss?: { channel?: { item?: RssItem[] } } };
+  if (!parsed.rss?.channel) throw new Error("RSS arXiv non valido");
+  return (parsed.rss.channel.item ?? []).filter((entry) => ANNOUNCED_TYPES.has(entry["arxiv:announce_type"] ?? "new")).flatMap((entry) => {
+    const id = entry.link?.match(/arxiv\.org\/abs\/(\d{4}\.\d{4,5})(?:v\d+)?(?:$|[?#])/)?.[1];
+    const date = new Date(entry.pubDate);
+    if (!id || !entry.title || !Number.isFinite(date.getTime())) return [];
+    const abstract = entry.description?.split("Abstract:").slice(1).join("Abstract:") || entry.description || "";
+    return [{ item: makeItem(id, clean(entry.title), date.toISOString(), entry["dc:creator"]?.split(",")[0]?.trim() || null, [entry.category].flat().filter(Boolean).slice(0, 3)), abstract: clean(abstract) }];
+  });
+}
+
+export function parseArxivListing(html: string): ArxivEntry[] {
+  const { document } = parseHTML(html);
+  const entries: ArxivEntry[] = [];
+  let date: string | null = null;
+  for (const node of document.querySelectorAll("h3, dt")) {
+    if (node.tagName === "H3") {
+      const text = node.textContent?.match(/\b\d{1,2} [A-Za-z]{3} \d{4}\b/)?.[0];
+      const parsed = text ? Date.parse(`${text} 00:00:00 GMT`) : NaN;
+      date = Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+      continue;
+    }
+    if (!date) continue;
+    const dt = node;
+    const link = dt.querySelector('a[title="Abstract"]')?.getAttribute("href");
+    const id = link?.match(/^\/abs\/(\d{4}\.\d{4,5})(?:v\d+)?$/)?.[1];
+    const dd = dt.nextElementSibling;
+    if (!id || dd?.tagName !== "DD") continue;
+    const titleNode = dd.querySelector(".list-title");
+    titleNode?.querySelector(".descriptor")?.remove();
+    const title = clean(titleNode?.textContent ?? "");
+    if (!title) continue;
+    const tags = [...(dd.querySelector(".list-subjects")?.textContent ?? "").matchAll(/\(([a-z-]+(?:\.[A-Za-z]+)?)\)/g)].map((match) => match[1]).slice(0, 3);
+    entries.push({ item: makeItem(id, title, date, clean(dd.querySelector(".list-authors a")?.textContent ?? "") || null, tags), abstract: "" });
   }
-  const [first] = creator.split(",");
-  return first.trim() || null;
+  // Un HTML diverso (challenge, errore o cambio markup) non deve diventare una fonte vuota silenziosa.
+  if (!entries.length && !/No (?:articles|papers|entries)|No updates/i.test(document.querySelector("#dlpage")?.textContent ?? "")) throw new Error("Lista arXiv non riconosciuta");
+  return entries;
+}
+
+function uniqueEntries(entries: ArxivEntry[]): ArxivEntry[] {
+  const byKey = new Map<string, ArxivEntry>();
+  for (const entry of entries) if (!byKey.has(entry.item.key)) byKey.set(entry.item.key, entry);
+  return [...byKey.values()];
+}
+function clean(text: string): string { return text.replace(/\s+/g, " ").trim(); }
+function makeItem(id: string, title: string, publishedAt: string, author: string | null, tags: string[]): FeedItem {
+  return { key: `arxiv:${id}`, source: "arxiv", title, url: `https://arxiv.org/abs/${id}`, discussionUrl: null, score: null, commentCount: null, author, publishedAt, tags };
 }

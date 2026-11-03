@@ -44,11 +44,13 @@ export type SourceFailure = {
 export type SourceSnapshot = {
   items: FeedItem[];
   fetchedAt: string;
+  notice?: string;
 };
 
 export type Lane = {
   items: FeedItem[];
   failures: SourceFailure[];
+  notices?: string[];
   /** Conteggi originali prima della deduplicazione, per distinguere feed vuoti da duplicati. */
   sourceItemCounts?: Partial<Record<SourceId, number>>;
   /** Quando ogni fonte riuscita è stata scaricata, non quando è stata servita. */
@@ -76,7 +78,7 @@ export function isLaneStale(lane: Lane, now: number): boolean {
   );
 }
 
-export type SortMode = "balanced" | "ranked" | "discussed" | "recent";
+export type SortMode = "scientific" | "ranked" | "discussed" | "recent";
 
 export type ReadFilter = "all" | "unread";
 
@@ -134,9 +136,9 @@ export function filterByPeriod(
 
 export function sortItems(items: FeedItem[], mode: SortMode): FeedItem[] {
   switch (mode) {
-    case "balanced":
-      // Voti solo dentro la propria fonte; l'assenza di voti non spinge arXiv in fondo.
-      return interleaveSources(sortByPlaceInSource(items, "score"));
+    case "scientific":
+      // La priorità scientifica viene applicata dai verdetti, mai dai voti.
+      return sortByPublishedAtDesc(items);
     case "recent":
       return sortByPublishedAtDesc(items);
     case "discussed":

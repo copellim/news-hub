@@ -51,18 +51,17 @@ resto funziona.
 
 **Le pagine sono statiche.** Ogni fonte è una funzione con `'use cache'` e un
 `cacheLife` proprio, perché i ritmi sono diversi: minuti per le front page, ore
-per la selezione di Hugging Face, giorni per arXiv (il feed si aggiorna una
+per la selezione di Hugging Face, ore per arXiv (il feed si aggiorna una
 volta al giorno e salta il weekend). Non c'è un pulsante di refresh: la
 freschezza dipende solo da quei tempi.
 
 **Una fonte giù non abbatte la corsia.** Le chiamate girano in
 `Promise.allSettled` e l'errore compare in pagina con il nome della fonte.
 
-**Il ranking confronta la posizione dentro la propria fonte.** Essere secondo
+**Le News confrontano la posizione dentro la propria fonte.** Essere secondo
 su 25 di Lobsters e terzo su 50 di HN è confrontabile; i punteggi grezzi no.
-Con "Più votati" le fonti senza punteggio, come arXiv, finiscono in fondo.
-Papers parte invece da **Equilibrato**, che alterna HF e arXiv dentro ogni
-fascia scientifica. Restano disponibili gli ordini per voti e per data.
+Papers ha solo **Valutazione scientifica** (default) e **Più recenti**: i voti
+non ordinano i paper e non vengono mostrati come segnali di qualità.
 
 **Dedup con l'id arXiv.** Il campo `paper.id` di Hugging Face *è* l'id arXiv,
 quindi lo stesso paper che esce su entrambe le fonti collassa in una riga sola.
@@ -112,15 +111,29 @@ La lista mostra **Consigliati** in cima e **Da valutare** sotto. Solo gli
 Anche i paper in attesa di analisi o con download/servizi non disponibili
 rimangono visibili tra quelli da valutare. I contatori distinguono i tre
 esiti e le attese per ogni fonte, applicando il filtro dei letti ma prima
-del limite per fonte. Il limite resta complessivo per fonte: prima prende i
-consigliati, poi quelli da valutare, mantenendo l'ordinamento scelto dentro
-ciascuna fascia. Il default **Equilibrato** alterna HF e arXiv dentro ogni
-fascia; i voti ordinano solo i paper della stessa fonte. **Più votati** resta
-un'opzione esplicita e colloca arXiv, che non ha voti, dopo HF.
-L'alternanza riguarda anche la lista senza scrematura, quando è scelto Equilibrato.
-Se arXiv risponde senza annunci, un messaggio distingue il feed vuoto da
-esclusioni dell'AI. Il controllo usa i conteggi prima della deduplicazione,
-così non scambia per vuota una fonte i cui paper compaiono anche su HF.
+del limite per fonte. Con **Valutazione scientifica** il limite prende prima i
+consigliati, poi quelli da valutare; le fonti si alternano dentro la stessa
+fascia e l'ordine interno parte dalla data. Con **Più recenti** la lista è
+cronologica e non viene divisa in fasce; gli esiti restano consultabili sulle
+righe e la scrematura attiva continua a raccogliere gli esclusi nell'audit.
+
+**Il recupero è indipendente per fonte.** L'obiettivo minimo è 20 candidati
+distinti per canale prima della valutazione, fino a 50 per fonte nel pool.
+HF integra la selezione corrente con i sette giorni precedenti se serve.
+arXiv legge gli RSS, poi integra dalle liste ufficiali `recent` quando gli
+annunci sono insufficienti; per categorie poco attive consulta fino a tre
+mesi precedenti. Il margine arXiv è di 100 candidati, tagliati a 50 solo dopo
+la deduplicazione con HF: 50 sovrapposizioni non azzerano così il canale.
+La pagina mostra i candidati distinti recuperati e segnala esplicitamente
+se una fonte non raggiunge 20, senza sostituirli con paper dell'altra.
+Se non si selezionano categorie arXiv, il suo recupero resta disattivato.
+
+Gli abstract delle voci ricavate dalle liste HTML si scaricano dalle pagine
+`abs` solo per paper richiesti dai riassunti e già presenti nel pool, con
+cache oraria. Le richieste del connettore arXiv sono serializzate e distanziate
+di almeno tre secondi per worker. Le liste mostrano la data dell'annuncio,
+non una data inventata del download. I controlli sulla quantità precedono
+letti e scrematura: non garantiscono 20 consigliati o 20 non letti.
 
 L'AI distingue quattro situazioni: evidenza adeguata, **limite** documentato,
 **informazione mancante** e **difetto sostanziale**. Solo quest'ultimo,

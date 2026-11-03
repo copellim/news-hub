@@ -87,11 +87,17 @@ export function isKnownArxivCategory(id: string): boolean {
 
 
 /**
- * Quanti item scaricare per fonte. È il tetto superiore, fisso: la selezione in
- * pagina taglia questa lista, così cambiare "elementi per fonte" non rifà una
- * richiesta di rete né moltiplica le voci di cache.
+ * Quota finale per fonte dopo la deduplicazione. La selezione in pagina
+ * taglia questa lista senza rifare richieste. arXiv recupera prima un margine
+ * maggiore (ARXIV_CANDIDATE_LIMIT), per conservare la quota dopo i duplicati HF.
  */
 export const SOURCE_FETCH_LIMIT = 50;
+
+/** Minimo di candidati distinti da recuperare per ciascun canale paper, se disponibili. */
+export const MIN_PAPERS_PER_SOURCE = 20;
+
+/** Margine per conservare la quota arXiv anche quando 50 candidati coincidono con HF. */
+export const ARXIV_CANDIDATE_LIMIT = SOURCE_FETCH_LIMIT * 2;
 
 /** Scelte del selettore in pagina. Devono restare <= SOURCE_FETCH_LIMIT. */
 export const ITEMS_PER_SOURCE_OPTIONS = [10, 20, 30, 50] as const;

@@ -2,7 +2,7 @@ import "server-only";
 
 import { cacheLife } from "next/cache";
 
-import { SOURCE_FETCH_LIMIT } from "@/lib/config";
+import { MIN_PAPERS_PER_SOURCE, SOURCE_FETCH_LIMIT } from "@/lib/config";
 import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson } from "./http";
 
@@ -42,15 +42,35 @@ type HuggingFaceEntry = Omit<HuggingFaceTexts, "title"> & { item: FeedItem };
 async function getHuggingFaceEntries(): Promise<{
   entries: HuggingFaceEntry[];
   fetchedAt: string;
+  notice?: string;
 }> {
   "use cache";
   // La selezione cambia una volta al giorno, non ha senso ripescarla ogni minuto.
   cacheLife("hours");
 
-  const papers = await fetchJson<DailyPaper[]>(
-    "huggingface",
-    DAILY_PAPERS_URL,
-  );
+  const byKey = new Map<string, DailyPaper>();
+  const append = (papers: DailyPaper[]) => {
+    if (!Array.isArray(papers)) throw new Error("Risposta HF non valida");
+    for (const entry of papers) {
+      if (!entry?.paper || !/^\d{4}\.\d{4,5}$/.test(entry.paper.id) || typeof entry.paper.title !== "string") continue;
+      if (!byKey.has(entry.paper.id)) byKey.set(entry.paper.id, entry);
+    }
+  };
+  let currentFailed = false;
+  try { append(await fetchJson<DailyPaper[]>("huggingface", DAILY_PAPERS_URL)); }
+  catch { currentFailed = true; }
+  let historical = false;
+  const now = new Date();
+  for (let daysBack = 1; byKey.size < MIN_PAPERS_PER_SOURCE && daysBack <= 7; daysBack++) {
+    const date = new Date(now);
+    date.setUTCDate(date.getUTCDate() - daysBack);
+    try {
+      append(await fetchJson<DailyPaper[]>("huggingface", `${DAILY_PAPERS_URL}?date=${date.toISOString().slice(0, 10)}`));
+      historical = true;
+    } catch { /* Un giorno non disponibile non impedisce di cercare gli altri. */ }
+  }
+  if (!byKey.size && currentFailed) throw new Error("HF: selezione corrente e giorni precedenti non disponibili");
+  const papers = [...byKey.values()];
   return {
     entries: papers.slice(0, SOURCE_FETCH_LIMIT).map((entry) => ({
       item: toFeedItem(entry),
@@ -58,12 +78,13 @@ async function getHuggingFaceEntries(): Promise<{
       aiSummary: entry.paper.ai_summary?.trim() || null,
     })),
     fetchedAt: new Date().toISOString(),
+    notice: historical ? "HF: inclusi anche paper dei giorni precedenti per raggiungere almeno 20 candidati distinti." : undefined,
   };
 }
 
 export async function getHuggingFaceSnapshot(): Promise<SourceSnapshot> {
-  const { entries, fetchedAt } = await getHuggingFaceEntries();
-  return { items: entries.map((entry) => entry.item), fetchedAt };
+  const { entries, fetchedAt, notice } = await getHuggingFaceEntries();
+  return { items: entries.map((entry) => entry.item), fetchedAt, notice };
 }
 
 export async function getHuggingFaceTexts(): Promise<

@@ -39,7 +39,7 @@ import {
 } from "@/lib/feed";
 
 const SORT_LABELS: Record<SortMode, string> = {
-  balanced: "Equilibrato",
+  scientific: "Valutazione scientifica",
   ranked: "Più votati",
   discussed: "Più discussi",
   recent: "Più recenti",
@@ -67,7 +67,7 @@ const LANE_HAS_PERIOD: Record<LaneId, boolean> = {
  */
 const LANE_SORT_MODES: Record<LaneId, readonly SortMode[]> = {
   news: ["ranked", "discussed", "recent"],
-  papers: ["balanced", "ranked", "recent"],
+  papers: ["scientific", "recent"],
 };
 
 /**
@@ -115,7 +115,7 @@ export function FeedBoard({
   laneId: LaneId;
   emptyLabel: string;
 }) {
-  const [sortMode, setSortMode] = useState<SortMode>(() => laneId === "papers" ? "balanced" : "ranked");
+  const [sortMode, setSortMode] = useState<SortMode>(() => laneId === "papers" ? "scientific" : "ranked");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const [period, setPeriod] = useState<Period>("all");
   const [perSource, setPerSource] = useState<number>(DEFAULT_ITEMS_PER_SOURCE);
@@ -211,16 +211,19 @@ export function FeedBoard({
     JSON.stringify(activeLane.fetchedAt),
   );
   const applyScreening = laneId === "papers" && screeningEnabled && settingsStatus === "ready";
+  const scientificView = laneId === "papers" && sortMode === "scientific";
   const candidateItems = useMemo(
     () => filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys),
     [periodItems, sortMode, readFilter, visitedKeys],
   );
-  const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers, sortMode === "balanced"), [candidateItems, screening.papers, sortMode]);
+  const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers, sortMode === "scientific"), [candidateItems, screening.papers, sortMode]);
   const counts = useMemo(() => screeningCounts(candidateItems, screening.papers), [candidateItems, screening.papers]);
   const visible = useMemo(() => ({
     ...activeLane,
-    items: takePerSource(applyScreening ? [...groups.recommended, ...groups.review] : candidateItems, perSource),
-  }), [activeLane, applyScreening, groups, candidateItems, perSource]);
+    items: takePerSource(applyScreening
+      ? scientificView ? [...groups.recommended, ...groups.review] : candidateItems.filter((item) => !groups.excluded.includes(item))
+      : candidateItems, perSource),
+  }), [activeLane, applyScreening, scientificView, groups, candidateItems, perSource]);
   const visibleGroups = useMemo(() => groupScreenedPapers(visible.items, screening.papers), [visible.items, screening.papers]);
 
   const rankings = useMemo(
@@ -323,17 +326,17 @@ export function FeedBoard({
         />
       )}
 
-      {laneId === "papers" && sortMode === "balanced" && (
-        <p className="px-1 text-sm text-muted sm:px-4">HF e arXiv si alternano dentro ogni fascia, quando disponibili. I voti ordinano solo i paper della stessa fonte; l’assenza di voti non penalizza arXiv.</p>
-      )}
+      {laneId === "papers" && <p data-paper-candidates className="px-1 text-sm text-muted sm:px-4">
+        Candidati distinti prima della scrematura: HF {activeLane.items.filter((item) => item.source === "huggingface").length} · arXiv {activeLane.items.filter((item) => item.source === "arxiv").length}.
+      </p>}
 
-      {laneId === "papers" && categories.length > 0 && activeLane.sourceItemCounts?.arxiv === 0 && (
-        <p role="status" className="rounded-xl border border-rule bg-surface p-4 text-sm text-muted">arXiv non ha restituito nuovi annunci nelle categorie selezionate. Il feed è vuoto prima della scrematura: i paper non sono stati esclusi dall’analisi AI.</p>
-      )}
+      {laneId === "papers" && activeLane.notices?.map((notice) => (
+        <p key={notice} role="status" className="rounded-xl border border-rule bg-surface p-4 text-sm text-muted">{notice}</p>
+      ))}
 
       {laneId === "papers" && screeningEnabled && (
         <div className="rounded-xl border border-rule bg-surface p-4 text-sm leading-relaxed text-muted" aria-live="polite">
-          <p>Consigliati in cima, paper da valutare visibili sotto. Sono esclusi soltanto i lavori ritrattati o con difetti sostanziali documentati dall’analisi AI. Limiti e verifiche incomplete restano espliciti.</p>
+          <p>{scientificView ? "Consigliati in cima, paper da valutare visibili sotto." : "Paper ordinati per data, con valutazioni scientifiche consultabili."} Sono esclusi soltanto i lavori ritrattati o con difetti sostanziali documentati dall’analisi AI. Limiti e verifiche incomplete restano espliciti.</p>
           {settingsStatus === "ready" ? <>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
@@ -351,7 +354,7 @@ export function FeedBoard({
         </div>
       )}
 
-      {applyScreening ? <>
+      {applyScreening && scientificView ? <>
         <section className="flex flex-col gap-3" data-screening-group="recommended" aria-labelledby="recommended-papers">
           <h2 id="recommended-papers" className="px-1 text-lg font-semibold text-ink sm:px-4">Consigliati · {visibleGroups.recommended.length}</h2>
           <FeedList {...listProps} lane={{ ...visible, items: visibleGroups.recommended }} emptyLabel={screening.running ? "Le analisi sono in corso. I paper in attesa sono visibili sotto." : "Nessun consigliato tra i paper mostrati. Puoi consultare quelli da valutare."} />

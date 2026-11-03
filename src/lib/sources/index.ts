@@ -1,6 +1,6 @@
 import "server-only";
 
-import { DEFAULT_ARXIV_CATEGORIES } from "@/lib/config";
+import { DEFAULT_ARXIV_CATEGORIES, MIN_PAPERS_PER_SOURCE, SOURCE_FETCH_LIMIT } from "@/lib/config";
 import {
   dedupeByKey,
   LANE_SOURCES,
@@ -9,6 +9,7 @@ import {
   type LaneId,
   type SourceId,
   type SourceSnapshot,
+  takePerSource,
 } from "@/lib/feed";
 import { getArxivSnapshot, getArxivTexts } from "./arxiv";
 import { getHackerNewsSnapshot } from "./hackernews";
@@ -48,9 +49,9 @@ function fetcherFor(
 }
 
 /**
- * Restituisce gli item nell'ordine nativo di ogni fonte, senza tagliarli:
- * ordinamento e numero per fonte sono scelte di visualizzazione, le fa la
- * pagina. Così cambiare i controlli non tocca la rete né la cache.
+ * Deduplica i candidati e applica la quota massima per fonte solo dopo il merge:
+ * il margine arXiv evita che i duplicati HF ne consumino tutta la quota.
+ * Ordinamento e limite visibile restano scelte client senza nuove richieste.
  */
 export async function getLane(
   lane: LaneId,
@@ -65,12 +66,14 @@ export async function getLane(
   const failures: Lane["failures"] = [];
   const fetchedAt: Lane["fetchedAt"] = {};
   const sourceItemCounts: Lane["sourceItemCounts"] = {};
+  const notices: string[] = [];
 
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
       items.push(...result.value.items);
       fetchedAt[sources[index]] = result.value.fetchedAt;
       sourceItemCounts[sources[index]] = result.value.items.length;
+      if (result.value.notice) notices.push(result.value.notice);
       return;
     }
     // Una fonte giù non deve portarsi dietro la corsia.
@@ -80,7 +83,16 @@ export async function getLane(
     });
   });
 
-  return { items: dedupeByKey(items), failures, fetchedAt, sourceItemCounts };
+  const unique = takePerSource(dedupeByKey(items), SOURCE_FETCH_LIMIT);
+  if (lane === "papers") {
+    for (const source of sources) {
+      if (source === "arxiv" && !options.arxivCategories.length) continue;
+      if (failures.some((failure) => failure.source === source)) continue;
+      const count = unique.filter((item) => item.source === source).length;
+      if (count < MIN_PAPERS_PER_SOURCE) notices.push(`${source === "arxiv" ? "arXiv" : "HF"}: recuperati ${count} paper distinti; minimo richiesto ${MIN_PAPERS_PER_SOURCE}. Non sono stati sostituiti da paper dell'altra fonte.`);
+    }
+  }
+  return { items: unique, failures, fetchedAt, sourceItemCounts, notices };
 }
 
 /** Quello che serve per riassumere un paper. */
@@ -103,14 +115,14 @@ export async function getPaperTexts(
   arxivCategories: readonly string[],
 ): Promise<PaperText[]> {
   // Una fonte giù toglie solo i suoi riassunti: l'errore la pagina lo mostra già.
-  const [huggingFace, arxiv] = await Promise.all([
-    getHuggingFaceTexts().catch(
-      () => new Map<string, HuggingFaceTexts>(),
-    ),
-    getArxivTexts(arxivCategories).catch(
-      () => new Map<string, { title: string; abstract: string }>(),
-    ),
-  ]);
+  const huggingFace = await getHuggingFaceTexts().catch(
+    () => new Map<string, HuggingFaceTexts>(),
+  );
+  // Un paper già idratato da HF non richiede un secondo download dell'abstract arXiv.
+  const arxivKeys = keys.filter((key) => !huggingFace.has(key));
+  const arxiv = arxivKeys.length ? await getArxivTexts(arxivCategories, arxivKeys).catch(
+    () => new Map<string, { title: string; abstract: string }>(),
+  ) : new Map<string, { title: string; abstract: string }>();
 
   return keys.flatMap((key) => {
     const fromHuggingFace = huggingFace.get(key);
