@@ -58,10 +58,11 @@ freschezza dipende solo da quei tempi.
 **Una fonte giù non abbatte la corsia.** Le chiamate girano in
 `Promise.allSettled` e l'errore compare in pagina con il nome della fonte.
 
-**Il ranking normalizza il punteggio sul massimo della propria fonte.** 1551
-punti su Hacker News e 163 su Lobsters non sono la stessa unità: sommarli non
-significa niente, il rapporto con il massimo sì. Le fonti senza punteggio —
-arXiv — finiscono in fondo. In alternativa c'è l'ordine per data.
+**Il ranking confronta la posizione dentro la propria fonte.** Essere secondo
+su 25 di Lobsters e terzo su 50 di HN è confrontabile; i punteggi grezzi no.
+Con "Più votati" le fonti senza punteggio, come arXiv, finiscono in fondo.
+Papers parte invece da **Equilibrato**, che alterna HF e arXiv dentro ogni
+fascia scientifica. Restano disponibili gli ordini per voti e per data.
 
 **Dedup con l'id arXiv.** Il campo `paper.id` di Hugging Face *è* l'id arXiv,
 quindi lo stesso paper che esce su entrambe le fonti collassa in una riga sola.
@@ -113,7 +114,13 @@ rimangono visibili tra quelli da valutare. I contatori distinguono i tre
 esiti e le attese per ogni fonte, applicando il filtro dei letti ma prima
 del limite per fonte. Il limite resta complessivo per fonte: prima prende i
 consigliati, poi quelli da valutare, mantenendo l'ordinamento scelto dentro
-ciascuna fascia.
+ciascuna fascia. Il default **Equilibrato** alterna HF e arXiv dentro ogni
+fascia; i voti ordinano solo i paper della stessa fonte. **Più votati** resta
+un'opzione esplicita e colloca arXiv, che non ha voti, dopo HF.
+L'alternanza riguarda anche la lista senza scrematura, quando è scelto Equilibrato.
+Se arXiv risponde senza annunci, un messaggio distingue il feed vuoto da
+esclusioni dell'AI. Il controllo usa i conteggi prima della deduplicazione,
+così non scambia per vuota una fonte i cui paper compaiono anche su HF.
 
 L'AI distingue quattro situazioni: evidenza adeguata, **limite** documentato,
 **informazione mancante** e **difetto sostanziale**. Solo quest'ultimo,

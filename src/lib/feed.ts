@@ -49,6 +49,8 @@ export type SourceSnapshot = {
 export type Lane = {
   items: FeedItem[];
   failures: SourceFailure[];
+  /** Conteggi originali prima della deduplicazione, per distinguere feed vuoti da duplicati. */
+  sourceItemCounts?: Partial<Record<SourceId, number>>;
   /** Quando ogni fonte riuscita è stata scaricata, non quando è stata servita. */
   fetchedAt: Partial<Record<SourceId, string>>;
 };
@@ -74,7 +76,7 @@ export function isLaneStale(lane: Lane, now: number): boolean {
   );
 }
 
-export type SortMode = "ranked" | "discussed" | "recent";
+export type SortMode = "balanced" | "ranked" | "discussed" | "recent";
 
 export type ReadFilter = "all" | "unread";
 
@@ -132,6 +134,9 @@ export function filterByPeriod(
 
 export function sortItems(items: FeedItem[], mode: SortMode): FeedItem[] {
   switch (mode) {
+    case "balanced":
+      // Voti solo dentro la propria fonte; l'assenza di voti non spinge arXiv in fondo.
+      return interleaveSources(sortByPlaceInSource(items, "score"));
     case "recent":
       return sortByPublishedAtDesc(items);
     case "discussed":
@@ -139,6 +144,22 @@ export function sortItems(items: FeedItem[], mode: SortMode): FeedItem[] {
     case "ranked":
       return sortByPlaceInSource(items, "score");
   }
+}
+
+/** Alterna le fonti disponibili preservando l'ordine interno, senza quote di qualità artificiali. */
+export function interleaveSources(items: readonly FeedItem[]): FeedItem[] {
+  const bySource = new Map<SourceId, FeedItem[]>();
+  for (const item of items) {
+    const queue = bySource.get(item.source) ?? [];
+    queue.push(item);
+    bySource.set(item.source, queue);
+  }
+  const queues = [...bySource.values()];
+  const result: FeedItem[] = [];
+  for (let index = 0; queues.some((queue) => index < queue.length); index++) {
+    for (const queue of queues) if (queue[index]) result.push(queue[index]);
+  }
+  return result;
 }
 
 function sortByPublishedAtDesc(items: FeedItem[]): FeedItem[] {

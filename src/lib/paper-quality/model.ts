@@ -1,4 +1,4 @@
-import type { FeedItem } from "@/lib/feed";
+import { interleaveSources, type FeedItem } from "@/lib/feed";
 
 /** Evidenze bibliografiche e valutazione del testo sono separate intenzionalmente. */
 export type Evidence = { label: string; url: string; detail: string };
@@ -80,7 +80,7 @@ export function screeningOrder(items: readonly FeedItem[]): string[] {
 }
 
 /** Preserva l'ordine scelto dentro ogni fascia e tiene visibili anche analisi mancanti o fallite. */
-export function groupScreenedPapers(items: readonly FeedItem[], papers: ReadonlyMap<string, PaperQuality>) {
+export function groupScreenedPapers(items: readonly FeedItem[], papers: ReadonlyMap<string, PaperQuality>, balanced = false) {
   const groups: Record<Verdict, FeedItem[]> = { recommended: [], review: [], excluded: [] };
   const pending: FeedItem[] = [];
   for (const item of items) {
@@ -89,6 +89,11 @@ export function groupScreenedPapers(items: readonly FeedItem[], papers: Readonly
     else groups[verdictOf(paper).verdict].push(item);
   }
   groups.review.push(...pending);
+  // Alternare prima della partizione non basta: gli scarti possono ricreare blocchi di una sola fonte.
+  if (balanced) {
+    groups.recommended = interleaveSources(groups.recommended);
+    groups.review = interleaveSources(groups.review);
+  }
   return groups;
 }
 

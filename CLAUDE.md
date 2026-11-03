@@ -91,7 +91,10 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 
 ## Decisioni da non ribaltare senza motivo
 
-- **Ranking per posizione dentro la propria fonte.** 1551 punti HN e 163 di
+- **Papers parte da Equilibrato.** Alterna HF e arXiv dentro ogni fascia di
+  qualità, anche dopo la partizione dei verdetti; i voti servono soltanto a
+  ordinare dentro HF. Le News mantengono Più votati come default.
+- **Ranking per posizione dentro la propria fonte (Più votati/Più discussi).** 1551 punti HN e 163 di
   Lobsters non sono la stessa unità, ma "terzo su 50 di HN" e "secondo su 25
   di Lobsters" sì: si ordina sulla quota della fonte che l'item ha sotto di sé
   (`rankWithinSource` e `topShareOf` in `src/lib/feed.ts`), a parità vince il

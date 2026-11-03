@@ -39,6 +39,7 @@ import {
 } from "@/lib/feed";
 
 const SORT_LABELS: Record<SortMode, string> = {
+  balanced: "Equilibrato",
   ranked: "Più votati",
   discussed: "Più discussi",
   recent: "Più recenti",
@@ -66,7 +67,7 @@ const LANE_HAS_PERIOD: Record<LaneId, boolean> = {
  */
 const LANE_SORT_MODES: Record<LaneId, readonly SortMode[]> = {
   news: ["ranked", "discussed", "recent"],
-  papers: ["ranked", "recent"],
+  papers: ["balanced", "ranked", "recent"],
 };
 
 /**
@@ -114,7 +115,7 @@ export function FeedBoard({
   laneId: LaneId;
   emptyLabel: string;
 }) {
-  const [sortMode, setSortMode] = useState<SortMode>("ranked");
+  const [sortMode, setSortMode] = useState<SortMode>(() => laneId === "papers" ? "balanced" : "ranked");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const [period, setPeriod] = useState<Period>("all");
   const [perSource, setPerSource] = useState<number>(DEFAULT_ITEMS_PER_SOURCE);
@@ -214,7 +215,7 @@ export function FeedBoard({
     () => filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys),
     [periodItems, sortMode, readFilter, visitedKeys],
   );
-  const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers), [candidateItems, screening.papers]);
+  const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers, sortMode === "balanced"), [candidateItems, screening.papers, sortMode]);
   const counts = useMemo(() => screeningCounts(candidateItems, screening.papers), [candidateItems, screening.papers]);
   const visible = useMemo(() => ({
     ...activeLane,
@@ -320,6 +321,14 @@ export function FeedBoard({
           onToggle={toggleCategory}
           disabled={isBusy}
         />
+      )}
+
+      {laneId === "papers" && sortMode === "balanced" && (
+        <p className="px-1 text-sm text-muted sm:px-4">HF e arXiv si alternano dentro ogni fascia, quando disponibili. I voti ordinano solo i paper della stessa fonte; l’assenza di voti non penalizza arXiv.</p>
+      )}
+
+      {laneId === "papers" && categories.length > 0 && activeLane.sourceItemCounts?.arxiv === 0 && (
+        <p role="status" className="rounded-xl border border-rule bg-surface p-4 text-sm text-muted">arXiv non ha restituito nuovi annunci nelle categorie selezionate. Il feed è vuoto prima della scrematura: i paper non sono stati esclusi dall’analisi AI.</p>
       )}
 
       {laneId === "papers" && screeningEnabled && (

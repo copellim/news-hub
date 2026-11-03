@@ -137,4 +137,13 @@ describe("equità dei lotti e visibilità", () => {
     expect(screeningCounts(items, papers).get("arxiv")).toEqual({ recommended: 0, review: 2, excluded: 0, pending: 1 });
     expect(screeningCounts(items, papers).get("huggingface")).toEqual({ recommended: 1, review: 0, excluded: 1, pending: 0 });
   });
+  it("alterna nuovamente dentro le fasce dopo che i verdetti hanno tolto righe intermedie", () => {
+    const items = [item("h1", "huggingface"), item("a1", "arxiv"), item("h2", "huggingface"), item("a2", "arxiv"), item("h3", "huggingface"), item("a3", "arxiv")];
+    const limited = quality(); limited.assessment!.checks[1].outcome = "limitation";
+    const papers = new Map([["h1", quality()], ["a1", limited], ["h2", quality()], ["a2", limited], ["h3", limited], ["a3", quality()]]);
+    const groups = groupScreenedPapers(items, papers, true);
+    expect(groups.recommended.map((x) => x.key)).toEqual(["h1", "a3", "h2"]);
+    expect(groups.review.map((x) => x.key)).toEqual(["a1", "h3", "a2"]);
+    expect(groupScreenedPapers(items, papers).recommended.map((x) => x.key)).toEqual(["h1", "h2", "a3"]);
+  });
 });

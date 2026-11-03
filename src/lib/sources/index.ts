@@ -64,11 +64,13 @@ export async function getLane(
   const items: FeedItem[] = [];
   const failures: Lane["failures"] = [];
   const fetchedAt: Lane["fetchedAt"] = {};
+  const sourceItemCounts: Lane["sourceItemCounts"] = {};
 
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
       items.push(...result.value.items);
       fetchedAt[sources[index]] = result.value.fetchedAt;
+      sourceItemCounts[sources[index]] = result.value.items.length;
       return;
     }
     // Una fonte giù non deve portarsi dietro la corsia.
@@ -78,7 +80,7 @@ export async function getLane(
     });
   });
 
-  return { items: dedupeByKey(items), failures, fetchedAt };
+  return { items: dedupeByKey(items), failures, fetchedAt, sourceItemCounts };
 }
 
 /** Quello che serve per riassumere un paper. */
