@@ -110,12 +110,21 @@ La lista mostra **Consigliati** in cima e **Da valutare** sotto. Solo gli
 **Esclusi** restano nella sezione espandibile, con motivazioni e fonti.
 Anche i paper in attesa di analisi o con download/servizi non disponibili
 rimangono visibili tra quelli da valutare. I contatori distinguono i tre
-esiti e le attese per ogni fonte, applicando il filtro dei letti ma prima
-del limite per fonte. Con **Valutazione scientifica** il limite prende prima i
-consigliati, poi quelli da valutare; le fonti si alternano dentro la stessa
-fascia e l'ordine interno parte dalla data. Con **Più recenti** la lista è
-cronologica e non viene divisa in fasce; gli esiti restano consultabili sulle
-righe e la scrematura attiva continua a raccogliere gli esclusi nell'audit.
+esiti e le attese solo per i candidati richiesti in pagina, dopo il filtro
+dei letti e il limite per fonte. Papers parte da **10 candidati per fonte in pagina**.
+Il limite seleziona il lotto PRIMA dei verdetti: vengono analizzati soltanto
+quei candidati, inclusi gli eventuali esclusi. Non si analizzano sostituti per
+riempire la lista. La tabella riporta solo il lotto della pagina; il pool di
+metadati disponibile resta indicato separatamente.
+
+Con **Valutazione scientifica** i candidati della pagina si raggruppano in
+consigliati e da valutare; con **Più recenti** restano in ordine cronologico.
+Aumentando il numero si richiedono soltanto le chiavi aggiuntive: i risultati
+già ricevuti durante la visita si riusano anche dopo riduzioni del limite,
+cambi di ordinamento o spegnimento/riaccensione della scrematura. Cambiando
+categorie o aggiornando il feed si ricontrolla solo il lotto corrente, usando
+anche la cache server. Le richieste già ricevute dal server possono terminare
+anche se il limite viene ridotto mentre è in corso un lotto.
 
 **Il recupero è indipendente per fonte.** L'obiettivo minimo è 20 candidati
 distinti per canale prima della valutazione, fino a 50 per fonte nel pool.

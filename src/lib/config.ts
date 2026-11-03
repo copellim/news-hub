@@ -103,6 +103,7 @@ export const ARXIV_CANDIDATE_LIMIT = SOURCE_FETCH_LIMIT * 2;
 export const ITEMS_PER_SOURCE_OPTIONS = [10, 20, 30, 50] as const;
 
 export const DEFAULT_ITEMS_PER_SOURCE = 20;
+export const DEFAULT_PAPERS_PER_SOURCE = 10;
 
 /**
  * arXiv chiede di identificarsi; Reddit e Lobsters rispondono peggio agli UA

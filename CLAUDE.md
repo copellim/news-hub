@@ -94,7 +94,11 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 - **Papers ha due sole viste: Valutazione scientifica e Più recenti.** La prima
   raggruppa i verdetti, la seconda ordina globalmente per data. I voti sono
   riservati alle News e non devono dare precedenza a HF nei paper.
-- **Minimo 20 candidati per canale paper prima della scrematura.** Ogni fonte
+- **Papers analizza solo il lotto richiesto in pagina, default 10 per fonte.**
+  Applica data, filtro letti e limite prima di `useScreening`. I verdetti non
+  devono cambiare il lotto o attivare sostituzioni automatiche. Aumentare il
+  limite aggiunge solo chiavi non ancora ricevute per lo stesso feed/categorie.
+- **Minimo 20 candidati per canale nel pool di metadati, separato dall'analisi.** Ogni fonte
   si recupera indipendentemente. Il pool arXiv ha margine di 100 prima della
   deduplica con HF, poi ciascuna fonte è limitata a 50. I duplicati non devono
   azzerare arXiv. Quantità insufficienti e recuperi parziali sono segnalati.

@@ -20,6 +20,7 @@ import { selectionKeyOf } from "@/lib/settings-model";
 import {
   DEFAULT_ARXIV_CATEGORIES,
   DEFAULT_ITEMS_PER_SOURCE,
+  DEFAULT_PAPERS_PER_SOURCE,
   ITEMS_PER_SOURCE_OPTIONS,
 } from "@/lib/config";
 import {
@@ -118,7 +119,7 @@ export function FeedBoard({
   const [sortMode, setSortMode] = useState<SortMode>(() => laneId === "papers" ? "scientific" : "ranked");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const [period, setPeriod] = useState<Period>("all");
-  const [perSource, setPerSource] = useState<number>(DEFAULT_ITEMS_PER_SOURCE);
+  const [perSource, setPerSource] = useState<number>(() => laneId === "papers" ? DEFAULT_PAPERS_PER_SOURCE : DEFAULT_ITEMS_PER_SOURCE);
   const { categories, toggleCategory } = useArxivCategories();
   const { visitedKeys } = useVisitedItems();
   const settingsStatus = useSettingsStatus();
@@ -203,8 +204,14 @@ export function FeedBoard({
     [activeLane, periodNow],
   );
 
+  // Il lotto della pagina si decide PRIMA dei verdetti: esclusioni e raccomandazioni
+  // riordinano solo questi candidati, senza avviare analisi sostitutive dal resto del pool.
+  const candidateItems = useMemo(() => {
+    const eligible = filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys);
+    return laneId === "papers" ? takePerSource(eligible, perSource) : eligible;
+  }, [periodItems, sortMode, readFilter, visitedKeys, laneId, perSource]);
   const screening = useScreening(
-    laneId === "papers" ? screeningOrder(activeLane.items) : [],
+    laneId === "papers" ? screeningOrder(candidateItems) : [],
     categories,
     laneId === "papers" && screeningEnabled,
     settingsStatus === "ready",
@@ -212,10 +219,6 @@ export function FeedBoard({
   );
   const applyScreening = laneId === "papers" && screeningEnabled && settingsStatus === "ready";
   const scientificView = laneId === "papers" && sortMode === "scientific";
-  const candidateItems = useMemo(
-    () => filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys),
-    [periodItems, sortMode, readFilter, visitedKeys],
-  );
   const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers, sortMode === "scientific"), [candidateItems, screening.papers, sortMode]);
   const counts = useMemo(() => screeningCounts(candidateItems, screening.papers), [candidateItems, screening.papers]);
   const visible = useMemo(() => ({
@@ -301,7 +304,7 @@ export function FeedBoard({
                 </option>
               ))}
             </select>
-            per fonte
+            {laneId === "papers" ? "per fonte in pagina" : "per fonte"}
           </label>
 
           {laneId === "papers" && <UnreadOnlySwitch
@@ -327,7 +330,7 @@ export function FeedBoard({
       )}
 
       {laneId === "papers" && <p data-paper-candidates className="px-1 text-sm text-muted sm:px-4">
-        Candidati distinti prima della scrematura: HF {activeLane.items.filter((item) => item.source === "huggingface").length} · arXiv {activeLane.items.filter((item) => item.source === "arxiv").length}.
+        Pool disponibile: HF {activeLane.items.filter((item) => item.source === "huggingface").length} · arXiv {activeLane.items.filter((item) => item.source === "arxiv").length}.
       </p>}
 
       {laneId === "papers" && activeLane.notices?.map((notice) => (
@@ -340,7 +343,7 @@ export function FeedBoard({
           {settingsStatus === "ready" ? <>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
-                <caption className="sr-only">Esiti della scrematura per fonte, prima del limite per fonte</caption>
+                <caption className="mb-2 text-left text-sm">Analisi della pagina: fino a {perSource} candidati per fonte. Gli esclusi contano nel limite.</caption>
                 <thead><tr><th scope="col" className="py-1 pr-2">Fonte</th><th scope="col" className="px-1 py-1">Consigliati</th><th scope="col" className="px-1 py-1">Da valutare</th><th scope="col" className="px-1 py-1">Esclusi</th><th scope="col" className="py-1 pl-1">In attesa</th></tr></thead>
                 <tbody>{LANE_SOURCES.papers.map((source) => {
                   const stats = counts.get(source) ?? { recommended: 0, review: 0, excluded: 0, pending: 0 };
@@ -348,7 +351,7 @@ export function FeedBoard({
                 })}</tbody>
               </table>
             </div>
-            {screening.running && <p className="mt-2">Analisi in corso, alternando HF e arXiv. I paper in attesa restano visibili tra quelli da valutare; i risultati vengono salvati e riutilizzati.</p>}
+            {screening.running && <p className="mt-2">Analisi dei soli candidati richiesti in pagina, alternando HF e arXiv. I risultati vengono salvati e riutilizzati; non si analizza il resto del pool.</p>}
             {screening.error && <p className="mt-2">{screening.error} <button type="button" className="font-semibold text-accent underline" onClick={screening.retry}>Riprova la scrematura</button></p>}
           </> : <p className="mt-2">{settingsStatus === "loading" ? "Caricamento dell’account…" : settingsStatus === "error" ? "Impostazioni dell’account non disponibili: per ora è mostrato l’elenco completo." : "Accedi per eseguire la scrematura. Per ora è mostrato l’elenco completo."}</p>}
         </div>
