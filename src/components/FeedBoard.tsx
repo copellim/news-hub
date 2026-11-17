@@ -6,12 +6,16 @@ import { loadLane } from "@/app/actions";
 import { ArxivCategoryFilter } from "@/components/ArxivCategoryFilter";
 import { PaperQualityDetails } from "@/components/PaperQualityDetails";
 import { groupScreenedPapers, screeningCounts, screeningOrder } from "@/lib/paper-quality/model";
+import { candidateLimit, personalizePapers } from "@/lib/paper-interest/model";
+import { useInterest } from "@/lib/paper-interest/use-interest";
 import { useScreening } from "@/lib/paper-quality/use-screening";
 import { FeedList } from "@/components/FeedList";
 import { useNow } from "@/lib/now";
 import { usePaperSummaries } from "@/lib/paper-summaries";
 import {
   useArxivCategories,
+  useBookmarks,
+  usePaperPersonalization,
   usePaperScreening,
   useSettingsStatus,
   useVisitedItems,
@@ -125,6 +129,10 @@ export function FeedBoard({
   const settingsStatus = useSettingsStatus();
   const { enabled: screeningEnabled, setEnabled: setScreeningEnabled } = usePaperScreening();
 
+  const { bookmarks } = useBookmarks();
+  const { enabled: personalizationEnabled, setEnabled: setPersonalizationEnabled } = usePaperPersonalization();
+  const favoriteSignature = JSON.stringify(bookmarks.filter((item) => item.source === "arxiv" || item.source === "huggingface").slice(0, 12).map(({ key, title, savedAt }) => ({ key, title, savedAt })));
+
   const [loaded, setLoaded] = useState<Lane | null>(null);
   const [isBusy, startWork] = useTransition();
 
@@ -204,12 +212,16 @@ export function FeedBoard({
     [activeLane, periodNow],
   );
 
-  // Il lotto della pagina si decide PRIMA dei verdetti: esclusioni e raccomandazioni
-  // riordinano solo questi candidati, senza avviare analisi sostitutive dal resto del pool.
+  // Il pool di analisi è più ampio della pagina e resta fisso durante i verdetti.
   const candidateItems = useMemo(() => {
     const eligible = filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys);
-    return laneId === "papers" ? takePerSource(eligible, perSource) : eligible;
+    return laneId === "papers" ? takePerSource(eligible, candidateLimit(perSource)) : eligible;
   }, [periodItems, sortMode, readFilter, visitedKeys, laneId, perSource]);
+  const interest = useInterest(
+    laneId === "papers" ? candidateItems.map((item) => item.key) : [], categories,
+    favoriteSignature === "[]" ? "" : favoriteSignature,
+    laneId === "papers" && sortMode === "scientific" && personalizationEnabled && settingsStatus === "ready",
+  );
   const screening = useScreening(
     laneId === "papers" ? screeningOrder(candidateItems) : [],
     categories,
@@ -219,14 +231,21 @@ export function FeedBoard({
   );
   const applyScreening = laneId === "papers" && screeningEnabled && settingsStatus === "ready";
   const scientificView = laneId === "papers" && sortMode === "scientific";
-  const groups = useMemo(() => groupScreenedPapers(candidateItems, screening.papers, sortMode === "scientific"), [candidateItems, screening.papers, sortMode]);
+  const groups = useMemo(() => {
+    const grouped = groupScreenedPapers(candidateItems, screening.papers, sortMode === "scientific");
+    if (sortMode === "scientific" && personalizationEnabled) {
+      grouped.recommended = personalizePapers(grouped.recommended, interest.scores);
+      grouped.review = personalizePapers(grouped.review, interest.scores);
+    }
+    return grouped;
+  }, [candidateItems, screening.papers, sortMode, personalizationEnabled, interest.scores]);
   const counts = useMemo(() => screeningCounts(candidateItems, screening.papers), [candidateItems, screening.papers]);
   const visible = useMemo(() => ({
     ...activeLane,
     items: takePerSource(applyScreening
       ? scientificView ? [...groups.recommended, ...groups.review] : candidateItems.filter((item) => !groups.excluded.includes(item))
-      : candidateItems, perSource),
-  }), [activeLane, applyScreening, scientificView, groups, candidateItems, perSource]);
+      : laneId === "papers" && scientificView && personalizationEnabled ? personalizePapers(candidateItems, interest.scores) : candidateItems, perSource),
+  }), [activeLane, applyScreening, scientificView, groups, candidateItems, perSource, laneId, personalizationEnabled, interest.scores]);
   const visibleGroups = useMemo(() => groupScreenedPapers(visible.items, screening.papers), [visible.items, screening.papers]);
 
   const rankings = useMemo(
@@ -312,6 +331,11 @@ export function FeedBoard({
             isOn={screeningEnabled}
             onChange={setScreeningEnabled}
           />}
+          {laneId === "papers" && <UnreadOnlySwitch
+            label="Personalizza dai preferiti"
+            isOn={personalizationEnabled}
+            onChange={setPersonalizationEnabled}
+          />}
           <UnreadOnlySwitch
             isOn={readFilter === "unread"}
             onChange={(isOn) => setReadFilter(isOn ? "unread" : "all")}
@@ -333,6 +357,11 @@ export function FeedBoard({
         Pool disponibile: HF {activeLane.items.filter((item) => item.source === "huggingface").length} · arXiv {activeLane.items.filter((item) => item.source === "arxiv").length}.
       </p>}
 
+      {laneId === "papers" && <p role="status" className="px-1 text-sm text-muted sm:px-4">
+        Candidati selezionati: {candidateItems.length} (fino a {candidateLimit(perSource)} per fonte).
+        {personalizationEnabled && scientificView && (settingsStatus !== "ready" ? " Accedi per personalizzare dai preferiti." : favoriteSignature === "[]" ? " Salva dei paper per personalizzare i suggerimenti." : interest.error ? ` ${interest.error}` : interest.running ? " Confronto con i preferiti in corso…" : " Personalizzazione: 60% affinità, 40% scoperta; senza affinità sufficiente resta l’ordine normale.")}
+      </p>}
+
       {laneId === "papers" && activeLane.notices?.map((notice) => (
         <p key={notice} role="status" className="rounded-xl border border-rule bg-surface p-4 text-sm text-muted">{notice}</p>
       ))}
@@ -343,7 +372,7 @@ export function FeedBoard({
           {settingsStatus === "ready" ? <>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
-                <caption className="mb-2 text-left text-sm">Analisi della pagina: fino a {perSource} candidati per fonte. Gli esclusi contano nel limite.</caption>
+                <caption className="mb-2 text-left text-sm">Analisi del pool: fino a {candidateLimit(perSource)} candidati per fonte, {perSource} visibili per fonte.</caption>
                 <thead><tr><th scope="col" className="py-1 pr-2">Fonte</th><th scope="col" className="px-1 py-1">Consigliati</th><th scope="col" className="px-1 py-1">Da valutare</th><th scope="col" className="px-1 py-1">Esclusi</th><th scope="col" className="py-1 pl-1">In attesa</th></tr></thead>
                 <tbody>{LANE_SOURCES.papers.map((source) => {
                   const stats = counts.get(source) ?? { recommended: 0, review: 0, excluded: 0, pending: 0 };

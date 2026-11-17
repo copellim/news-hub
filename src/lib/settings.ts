@@ -119,6 +119,14 @@ export function usePaperScreening() {
   return { enabled: settings.paperScreening, setEnabled };
 }
 
+export function usePaperPersonalization() {
+  const { settings } = useSnapshot();
+  const setEnabled = useCallback((enabled: boolean) => {
+    enqueue({ type: "setPaperPersonalization", enabled });
+  }, []);
+  return { enabled: settings.paperPersonalization, setEnabled };
+}
+
 export function useArxivCategories() {
   const { settings } = useSnapshot();
 
@@ -175,7 +183,7 @@ function publish(next: SettingsSnapshot): void {
 function enqueue(operation: SettingsOperation): void {
   const { status, settings } = snapshot;
   if (status === "signedOut" || status === "error") {
-    if (operation.type === "setCategories" || operation.type === "setPaperScreening") {
+    if (operation.type === "setCategories" || operation.type === "setPaperScreening" || operation.type === "setPaperPersonalization") {
       publish({ status, settings: applyOperations(settings, [operation]) });
     }
     return;

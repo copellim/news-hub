@@ -101,7 +101,7 @@ describe("validazione della lettura AI", () => {
 describe("preferenza di scrematura e migrazione", () => {
   it("migra v1 senza perdere categorie, segnalibri o letti e attiva il filtro", () => {
     const old = { version: 1, arxivCategories: ["cs.AI"], bookmarks: [], visited: ["arxiv:2312.00752"] };
-    expect(normalizeSettings(old)).toEqual({ ...old, version: 2, paperScreening: true });
+    expect(normalizeSettings(old)).toEqual({ ...old, version: 2, paperScreening: true, paperPersonalization: true });
   });
   it("mantiene la disattivazione nelle normalizzazioni e nei merge legacy", () => {
     const settings = applyOperations(DEFAULT_SETTINGS, [{ type: "setPaperScreening", enabled: false }]);
@@ -145,5 +145,15 @@ describe("equità dei lotti e visibilità", () => {
     expect(groups.recommended.map((x) => x.key)).toEqual(["h1", "a3", "h2"]);
     expect(groups.review.map((x) => x.key)).toEqual(["a1", "h3", "a2"]);
     expect(groupScreenedPapers(items, papers).recommended.map((x) => x.key)).toEqual(["h1", "h2", "a3"]);
+  });
+});
+
+describe("preferenza personalizzazione", () => {
+  it("salva la disattivazione e la mantiene durante le migrazioni", () => {
+    const operation = parseSettingsOperation({ type: "setPaperPersonalization", enabled: false })!;
+    const settings = applyOperations(DEFAULT_SETTINGS, [operation]);
+    expect(normalizeSettings(settings)?.paperPersonalization).toBe(false);
+    expect(applyOperations(settings, [{ type: "mergeLocal", settings: DEFAULT_SETTINGS }]).paperPersonalization).toBe(false);
+    expect(parseSettingsOperation({ type: "setPaperPersonalization", enabled: "false" })).toBeNull();
   });
 });

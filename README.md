@@ -110,12 +110,12 @@ La lista mostra **Consigliati** in cima e **Da valutare** sotto. Solo gli
 **Esclusi** restano nella sezione espandibile, con motivazioni e fonti.
 Anche i paper in attesa di analisi o con download/servizi non disponibili
 rimangono visibili tra quelli da valutare. I contatori distinguono i tre
-esiti e le attese solo per i candidati richiesti in pagina, dopo il filtro
-dei letti e il limite per fonte. Papers parte da **10 candidati per fonte in pagina**.
-Il limite seleziona il lotto PRIMA dei verdetti: vengono analizzati soltanto
-quei candidati, inclusi gli eventuali esclusi. Non si analizzano sostituti per
-riempire la lista. La tabella riporta solo il lotto della pagina; il pool di
-metadati disponibile resta indicato separatamente.
+esiti e le attese per un pool più ampio della pagina, dopo il filtro dei letti:
+fino a tre volte il limite visibile, con minimo 30 e massimo 50 per fonte,
+compatibilmente con i paper disponibili. Papers mostra inizialmente **10 paper
+per fonte**. Gli esclusi liberano posti fra gli altri candidati già nel pool;
+non si avviano analisi sostitutive oltre quel pool. La tabella riporta il pool
+analizzato e il numero in attesa.
 
 Con **Valutazione scientifica** i candidati della pagina si raggruppano in
 consigliati e da valutare; con **Più recenti** restano in ordine cronologico.
@@ -236,3 +236,28 @@ src/app/                    le tre pagine, le Server Action e le route API
 ```
 
 Note di architettura e decisioni prese: `CLAUDE.md`.
+
+### Paper affini ai preferiti
+
+`TYPESAFE_API_KEY` abilita il confronto con Jev (API TypeSafe). Nel ranking
+scientifico, l'interruttore **Personalizza dai preferiti** controlla una preferenza
+salvata per account. Si confrontano titolo e abstract dei candidati con gli ultimi
+12 paper salvati; nessuna email viene inviata al modello. Abstract non disponibili
+lasciano il solo titolo. I risultati sono in cache fino a un giorno, con
+rivalidazione dopo un'ora e chiave dipendente da candidati e preferiti.
+
+Ogni fonte contribuisce fino a `min(50, max(30, 3 × limite in pagina))` candidati allo
+screening, anche con personalizzazione spenta. Il limite in pagina resta distinto:
+10 per fonte significa fino a 30 analizzati per fonte. Le esclusioni non avviano
+analisi sostitutive oltre questo pool. Questo aumenta il numero di PDF valutabili
+e quindi tempi e consumo dell'API Anthropic; i verdetti già salvati vengono riusati.
+
+Dentro ciascuna fascia scientifica si riservano due posizioni ogni cinque ai
+primi candidati dell'ordine normale, prima di assegnarne tre per affinità (soglia
+iniziale 0,65). La quota vale per gruppi completi di cinque per fonte; gruppi
+incompleti riservano almeno il 40% alla scoperta. È spazio indipendente dal profilo,
+non una garanzia che gli argomenti siano diversi. Affinità e qualità scientifica
+restano separate. Senza preferiti, senza chiave, con errore del servizio o senza
+segnali sufficienti si usa l'ordine normale. L'ordinamento cronologico non viene
+personalizzato. Le richieste Jev sono autenticate e accettano solo paper nei feed
+server, in lotti di massimo 16 candidati.

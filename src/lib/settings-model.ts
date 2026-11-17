@@ -20,6 +20,7 @@ export type Bookmark = FeedItem & {
 export type Settings = {
   version: 2;
   paperScreening: boolean;
+  paperPersonalization: boolean;
   arxivCategories: string[];
   bookmarks: Bookmark[];
   /** Chiavi degli articoli aperti almeno una volta. */
@@ -35,6 +36,7 @@ const MAX_VISITED = 2000;
 export const DEFAULT_SETTINGS: Settings = {
   version: 2,
   paperScreening: true,
+  paperPersonalization: true,
   arxivCategories: [...DEFAULT_ARXIV_CATEGORIES],
   bookmarks: [],
   visited: [],
@@ -50,6 +52,7 @@ export type SettingsOperation =
   | { type: "removeBookmark"; key: string }
   | { type: "markVisited"; key: string }
   | { type: "setPaperScreening"; enabled: boolean }
+  | { type: "setPaperPersonalization"; enabled: boolean }
   | { type: "setCategories"; categories: string[] }
   /** Recupero una tantum di quello che il browser teneva nel localStorage. */
   | { type: "mergeLocal"; settings: Settings };
@@ -87,6 +90,8 @@ function applyOperation(
         ...settings,
         visited: [operation.key, ...settings.visited].slice(0, MAX_VISITED),
       };
+    case "setPaperPersonalization":
+      return { ...settings, paperPersonalization: operation.enabled };
     case "setPaperScreening":
       return { ...settings, paperScreening: operation.enabled };
     case "setCategories":
@@ -114,6 +119,7 @@ function mergeLocalSettings(remote: Settings, local: Settings): Settings {
   return {
     version: 2,
     paperScreening: remote.paperScreening,
+    paperPersonalization: remote.paperPersonalization,
     arxivCategories: hasDefaultCategories
       ? local.arxivCategories
       : remote.arxivCategories,
@@ -160,6 +166,7 @@ export function normalizeSettings(value: unknown): Settings | null {
     // Migrazione esplicita v1 → v2: conserva i dati e attiva la scrematura.
     paperScreening: candidate.version === 2 && typeof candidate.paperScreening === "boolean"
       ? candidate.paperScreening : true,
+    paperPersonalization: typeof candidate.paperPersonalization === "boolean" ? candidate.paperPersonalization : true,
     arxivCategories: asArray(candidate.arxivCategories).filter(isCategory),
     bookmarks: asArray(candidate.bookmarks).filter(isBookmark),
     visited: asArray(candidate.visited)
@@ -181,6 +188,9 @@ export function parseSettingsOperation(
   }
   const candidate = value as Record<string, unknown>;
   switch (candidate.type) {
+    case "setPaperPersonalization":
+      return typeof candidate.enabled === "boolean"
+        ? { type: "setPaperPersonalization", enabled: candidate.enabled } : null;
     case "setPaperScreening":
       return typeof candidate.enabled === "boolean"
         ? { type: "setPaperScreening", enabled: candidate.enabled } : null;
