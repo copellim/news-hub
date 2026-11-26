@@ -22,7 +22,7 @@ import { getLobstersSnapshot } from "./lobsters";
 import { getRedditSnapshot } from "./reddit";
 
 export type LaneOptions = {
-  /** Categorie arXiv scelte in pagina; ignorate dalle altre fonti. */
+  /** arXiv categories chosen on the page; ignored by the other sources. */
   arxivCategories: readonly string[];
 };
 
@@ -49,9 +49,9 @@ function fetcherFor(
 }
 
 /**
- * Deduplica i candidati e applica la quota massima per fonte solo dopo il merge:
- * il margine arXiv evita che i duplicati HF ne consumino tutta la quota.
- * Ordinamento e limite visibile restano scelte client senza nuove richieste.
+ * Deduplicates the candidates and applies the maximum quota per source only after the merge:
+ * the arXiv margin prevents HF duplicates from consuming its whole quota.
+ * Ordering and visible limit remain client choices with no new requests.
  */
 export async function getLane(
   lane: LaneId,
@@ -76,7 +76,7 @@ export async function getLane(
       if (result.value.notice) notices.push(result.value.notice);
       return;
     }
-    // Una fonte giù non deve portarsi dietro la corsia.
+    // A source that is down must not take the lane down with it.
     failures.push({
       source: sources[index],
       message: messageOf(result.reason),
@@ -95,30 +95,30 @@ export async function getLane(
   return { items: unique, failures, fetchedAt, sourceItemCounts, notices };
 }
 
-/** Quello che serve per riassumere un paper. */
+/** What is needed to summarise a paper. */
 export type PaperText = {
   key: string;
   title: string;
   abstract: string | null;
-  /** Il riassunto di una frase che HF fornisce già, in inglese. */
+  /** The one-sentence summary that HF already provides, in English. */
   huggingFaceSummary: string | null;
 };
 
 /**
- * I testi dei paper richiesti, presi dai feed in cache e mai dal client: è la
- * whitelist dei riassunti. Una chiave che non compare nei feed non produce
- * nulla, quindi nessuno può far riassumere (e pagare) un testo arbitrario.
- * Se lo stesso paper è su HF e su arXiv vince HF, che ha anche il suo riassunto.
+ * The texts of the requested papers, taken from the cached feeds and never from the client: it is
+ * the summaries' whitelist. A key that does not appear in the feeds produces
+ * nothing, so nobody can have an arbitrary text summarised (and paid for).
+ * If the same paper is on HF and on arXiv, HF wins, since it also has its own summary.
  */
 export async function getPaperTexts(
   keys: readonly string[],
   arxivCategories: readonly string[],
 ): Promise<PaperText[]> {
-  // Una fonte giù toglie solo i suoi riassunti: l'errore la pagina lo mostra già.
+  // A source that is down removes only its own summaries: the page already shows the error.
   const huggingFace = await getHuggingFaceTexts().catch(
     () => new Map<string, HuggingFaceTexts>(),
   );
-  // Un paper già idratato da HF non richiede un secondo download dell'abstract arXiv.
+  // A paper already hydrated by HF does not need a second download of the arXiv abstract.
   const arxivKeys = keys.filter((key) => !huggingFace.has(key));
   const arxiv = arxivKeys.length ? await getArxivTexts(arxivCategories, arxivKeys).catch(
     () => new Map<string, { title: string; abstract: string }>(),

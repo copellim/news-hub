@@ -20,11 +20,11 @@ import { countComments, hasReadableDiscussion, isSelfPost } from "@/lib/reader-m
 export type ReaderTab = "article" | "comments";
 
 /**
- * La card di lettura: bottom sheet modale a tutta altezza su mobile, side sheet
- * modale a destra da `sm` (stili in `.reader-sheet`, globals.css). È un
- * `<dialog>` aperto con `showModal()`, che dà già focus intrappolato, Esc e
- * scrim. Articolo e commenti si caricano insieme all'apertura: passando alla
- * seconda tab è già pronta.
+ * The reading card: full-height modal bottom sheet on mobile, modal side sheet
+ * on the right from `sm` (styles in `.reader-sheet`, globals.css). It is a
+ * `<dialog>` opened with `showModal()`, which already gives trapped focus, Esc
+ * and scrim. Article and comments load together on opening: switching to the
+ * second tab, it is already ready.
  */
 export function ReaderSheet({
   item,
@@ -60,8 +60,8 @@ export function ReaderSheet({
       ref={dialogRef}
       aria-labelledby={titleId}
       className="reader-sheet"
-      // Un tocco sullo scrim chiude, come nei sheet modali di M3: il contenuto
-      // riempie il dialog, quindi il dialog stesso come bersaglio è lo scrim.
+      // A tap on the scrim closes, as in M3 modal sheets: the content fills
+      // the dialog, so the dialog itself as the target is the scrim.
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           event.currentTarget.close();
@@ -76,8 +76,8 @@ export function ReaderSheet({
           </IconButton>
           <div className="min-w-0 grow py-2.5">
             <p className="text-xs font-semibold text-muted">{SOURCE_LABELS[item.source]}</p>
-            {/* Il focus iniziale del dialog va sul titolo e non sulla X: lo
-                screen reader legge cosa si è aperto, e la X non si accende. */}
+            {/* The dialog's initial focus goes to the title and not to the X: the
+                screen reader reads what opened, and the X does not light up. */}
             <h2
               id={titleId}
               tabIndex={-1}
@@ -115,8 +115,8 @@ export function ReaderSheet({
           {currentLoad?.status === "loading" && <span className="linear-progress" role="progressbar" aria-label="Caricamento" />}
         </div>
 
-        {/* Un pannello scorrevole per tab, entrambi montati: passando
-            dall'uno all'altro ognuno resta dove lo si era lasciato. */}
+        {/* One scrollable panel per tab, both mounted: switching from one
+            to the other, each stays where it was left. */}
         {hasArticle && (
           <ReaderPanel isHidden={tab !== "article"} load={article.load} onRetry={article.retry}>
             {(value) => <ReaderArticle article={value} />}
@@ -133,19 +133,19 @@ export function ReaderSheet({
 }
 
 /**
- * Il tasto indietro chiude la card invece di lasciare la pagina, come un sheet
- * su Android: all'apertura si aggiunge una voce alla cronologia (Next 16
- * supporta `history.pushState` nativo), e chiudendo con Esc o con la X la si
- * toglie. In sviluppo `StrictMode` monta l'effetto due volte: la voce si
- * aggiunge solo se non c'è già.
+ * The back button closes the card instead of leaving the page, like a sheet
+ * on Android: on opening an entry is added to the history (Next 16 supports
+ * native `history.pushState`), and closing with Esc or with the X removes
+ * it. In development `StrictMode` mounts the effect twice: the entry is
+ * added only if it is not already there.
  */
 function useHistoryBackCloses(
   dialogRef: RefObject<HTMLDialogElement | null>,
   key: string,
   onClose: () => void,
 ) {
-  // Il genitore passa una funzione nuova a ogni render: l'effetto non deve
-  // ripartire per questo, solo per una card diversa.
+  // The parent passes a new function on every render: the effect must not
+  // restart for that, only for a different card.
   const handleClose = useEffectEvent(onClose);
 
   useEffect(() => {
@@ -155,8 +155,8 @@ function useHistoryBackCloses(
     }
     if (!dialog.open) {
       dialog.showModal();
-      // `autoFocus` di React non scrive l'attributo, e `showModal()` darebbe
-      // il focus al primo elemento attivabile: la X.
+      // React's `autoFocus` does not write the attribute, and `showModal()`
+      // would give focus to the first focusable element: the X.
       dialog.querySelector<HTMLElement>("[data-initial-focus]")?.focus();
     }
     const isOurEntry = () => window.history.state?.newsHubReader === key;
@@ -211,7 +211,7 @@ function ReaderPanel<T>({
   );
 }
 
-/** Tab primarie di M3, come quelle dell'ordinamento nel FeedBoard. */
+/** M3 primary tabs, like the sorting ones in the FeedBoard. */
 function TabButton({
   isSelected,
   onSelect,

@@ -18,15 +18,15 @@ export type AlgoliaItem = {
 type FirebaseItem = { kids?: number[] } | null;
 
 /**
- * Due chiamate: Algolia dà l'albero intero in una volta, ma con i figli in
- * ordine di id, cioè cronologico; i `kids` di Firebase hanno l'ordine con cui
- * HN mostra il primo livello. Ordinare anche i livelli sotto costerebbe una
- * chiamata per commento: lì resta l'ordine cronologico.
+ * Two calls: Algolia gives the whole tree at once, but with the children in
+ * id order, that is chronological; Firebase's `kids` have the order in which
+ * HN shows the first level. Ordering the levels below too would cost one
+ * call per comment: there the chronological order remains.
  */
 export async function fetchHackerNewsDiscussion(id: string): Promise<Discussion> {
   const [story, ranked] = await Promise.all([
     fetchJson<AlgoliaItem>("hackernews", `https://hn.algolia.com/api/v1/items/${id}`),
-    // L'ordine è un di più: se Firebase non risponde resta quello cronologico.
+    // The order is a bonus: if Firebase does not answer the chronological one remains.
     fetchJson<FirebaseItem>(
       "hackernews",
       `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
@@ -43,8 +43,8 @@ export function hackerNewsDiscussion(
   const comments = story.children
     .filter(isComment)
     .map(toComment)
-    // `sort` è stabile: chi manca da Firebase (morti, appena arrivati) va in
-    // fondo nell'ordine di Algolia.
+    // `sort` is stable: those missing from Firebase (dead, just arrived) go to
+    // the bottom in Algolia's order.
     .sort(
       (a, b) =>
         (rank.get(Number(a.id)) ?? Infinity) - (rank.get(Number(b.id)) ?? Infinity),

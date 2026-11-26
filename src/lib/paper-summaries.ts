@@ -4,17 +4,17 @@ import { useEffect, useRef, useState } from "react";
 
 import { generatePaperSummaries, readPaperSummaries } from "@/app/actions";
 
-/** Deve restare allineato a `MAX_KEYS_PER_GENERATION` della Server Action. */
+/** Must stay aligned with the Server Action's `MAX_KEYS_PER_GENERATION`. */
 const GENERATION_BATCH_SIZE = 8;
 
 /**
- * Riassunti dei paper visibili, solo con l'accesso: senza, le Server Action
- * risponderebbero vuote e non si chiamano nemmeno. Prima legge quelli già
- * pronti, poi chiede quelli mancanti a lotti, uno dopo l'altro: così i primi
- * compaiono subito e un solo lotto alla volta riscrive il file su Blob.
+ * Summaries of the visible papers, only when signed in: without it, the Server
+ * Actions would answer empty and are not even called. It first reads the ready
+ * ones, then asks for the missing ones in batches, one after the other: so the
+ * first ones appear right away and only one batch at a time rewrites the file on Blob.
  *
- * Ogni chiave si chiede una volta sola per visita, anche se la lista cambia
- * per un filtro: tornare indietro non ripete le chiamate.
+ * Each key is asked for only once per visit, even if the list changes
+ * because of a filter: going back does not repeat the calls.
  */
 export function usePaperSummaries(
   keys: readonly string[],
@@ -31,7 +31,7 @@ export function usePaperSummaries(
   const readKeys = useRef(new Set<string>());
   const generationKeys = useRef(new Set<string>());
 
-  // Le dipendenze sono stringhe: gli array cambiano identità a ogni render.
+  // The dependencies are strings: arrays change identity on every render.
   const keysSignature = keys.join("|");
   const categoriesSignature = categories.join(",");
 
@@ -70,8 +70,8 @@ export function usePaperSummaries(
           !knownSummaries.current.has(key) && !generationKeys.current.has(key),
       );
       missing.forEach((key) => generationKeys.current.add(key));
-      // Tutti in attesa da subito, non solo il lotto in corso: le Server Action
-      // girano una alla volta, e gli ultimi lotti partono dopo parecchi secondi.
+      // All pending from the start, not just the current batch: Server Actions
+      // run one at a time, and the last batches start several seconds later.
       setPending(missing, true);
 
       for (let start = 0; start < missing.length; start += GENERATION_BATCH_SIZE) {

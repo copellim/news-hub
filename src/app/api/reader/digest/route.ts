@@ -4,13 +4,13 @@ import { createPaperDigest, findPaperDigest } from "@/lib/summaries/digest";
 import { isSummarizerConfigured } from "@/lib/summaries/generate";
 
 /**
- * Il riassunto del paper intero. GET legge quello salvato, POST lo genera se
- * manca: si genera solo a richiesta, perché è una chiamata a pagamento, e una
- * volta salvato vale per tutti. Route e non Server Action per lo stesso motivo
- * della card: le Server Action girano una alla volta, dietro i riassunti della lista.
+ * The whole-paper summary. GET reads the saved one, POST generates it if
+ * missing: it is generated only on request, because it is a paid call, and once
+ * saved it is valid for everyone. A route and not a Server Action for the same reason
+ * as the card: Server Actions run one at a time, behind the list summaries.
  */
 
-/** Solo id arXiv nuovi: l'id diventa il nome di un file su Blob. */
+/** Only new-style arXiv ids: the id becomes the name of a file on Blob. */
 const PAPER_KEY_PATTERN = /^arxiv:(\d{4}\.\d{4,5})$/;
 
 export async function GET(request: Request): Promise<Response> {

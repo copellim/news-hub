@@ -35,8 +35,8 @@ beforeEach(() => {
   }));
 });
 
-describe("verifica bibliografica", () => {
-  it("preferisce la vera accettazione alla copia CoRR e identifica la revisione arXiv", async () => {
+describe("bibliographic verification", () => {
+  it("prefers the real acceptance to the CoRR copy and identifies the arXiv revision", async () => {
     const { quality, revision } = await collectMetadata(item);
     expect(quality.publication).toBe("verified");
     expect(quality.venue).toBe("colmweb.org/COLM/2024/Conference");
@@ -44,7 +44,7 @@ describe("verifica bibliografica", () => {
     expect(revision).toBe("2312.00752v2");
     expect(quality.citations).toBe(0);
   });
-  it("non scambia presenza su OpenReview, rifiuto o workshop per accettazione", async () => {
+  it("does not mistake presence on OpenReview, rejection or workshop for acceptance", async () => {
     notes = [imported];
     expect((await collectMetadata(item)).quality.publication).toBe("unverified");
     notes = [{ ...accepted, content: { ...accepted.content, venueid: content("ICLR.cc/2024/Conference/Rejected_Submission") } }];
@@ -52,21 +52,21 @@ describe("verifica bibliografica", () => {
     notes = [{ ...accepted, content: { ...accepted.content, venueid: content("ICLR.cc/2024/Workshop/Test") } }];
     expect((await collectMetadata(item)).quality.publication).toBe("unverified");
   });
-  it("riconosce il venueid ufficiale ma non basta un titolo uguale o una decisione incoerente", async () => {
+  it("recognizes the official venueid but a matching title or an inconsistent decision is not enough", async () => {
     replies = [{ invitations: ["colmweb.org/COLM/2024/Conference/Paper1/-/Decision"], content: { decision: content("Reject") } }];
     expect((await collectMetadata(item)).quality.publication).toBe("unverified");
     replies = [{ invitations: ["Fake/-/Decision"], content: { decision: content("Accept") } }];
     notes = [{ ...accepted, content: { ...accepted.content, authors: content(["Someone Else"]) } }];
     expect((await collectMetadata(item)).quality.evidence.some((evidence) => evidence.label === "OpenReview")).toBe(false);
   });
-  it("verifica una pubblicazione Crossref riconosciuta ma non un DOI di preprint", async () => {
+  it("verifies a recognized Crossref publication but not a preprint DOI", async () => {
     notes = [];
     work = { DOI: "10.1234/example", type: "journal-article", "container-title": ["Journal of Machine Learning Research"] };
     expect((await collectMetadata(item)).quality.publication).toBe("verified");
     work.type = "posted-content";
     expect((await collectMetadata(item)).quality.publication).toBe("unverified");
   });
-  it("segue gli aggiornamenti verso il DOI originale e distingue ritrattazioni da correzioni", async () => {
+  it("follows updates to the original DOI and distinguishes retractions from corrections", async () => {
     work = { DOI: "10.1234/example", type: "journal-article", "container-title": ["Journal of Machine Learning Research"] };
     updates = [{ DOI: "10.1234/notice", "update-to": [{ DOI: "10.1234/example", type: "correction" }] }];
     expect((await collectMetadata(item)).quality.integrity).toBe("no-notice-found");
@@ -75,17 +75,17 @@ describe("verifica bibliografica", () => {
     expect(quality.integrity).toBe("retracted");
     expect(quality.evidence.some((evidence) => evidence.url === "https://doi.org/10.1234/notice")).toBe(true);
   });
-  it("non applica al paper un avviso che riguarda un altro DOI", async () => {
+  it("does not apply to the paper a notice about another DOI", async () => {
     work = { DOI: "10.1234/example", type: "posted-content", "update-to": [{ DOI: "10.1234/other", type: "retraction" }] };
     expect((await collectMetadata(item)).quality.integrity).toBe("no-notice-found");
   });
-  it("conserva una ritrattazione OpenAlex anche in presenza di accettazione ufficiale", async () => {
+  it("keeps an OpenAlex retraction even when there is an official acceptance", async () => {
     oaRetracted = true;
     const { quality } = await collectMetadata(item);
     expect(quality.publication).toBe("verified");
     expect(quality.integrity).toBe("retracted");
   });
-  it("fallimenti e rate limit restano avvisi, non giudizi negativi", async () => {
+  it("failures and rate limits stay warnings, not negative judgements", async () => {
     offline = true;
     const { quality } = await collectMetadata(item);
     expect(quality.publication).toBe("unverified");

@@ -1,4 +1,4 @@
-/** Modello comune a tutte le fonti. Client-safe: nessuna dipendenza `node:*`. */
+/** Model shared by all sources. Client-safe: no `node:*` dependency. */
 
 export type SourceId =
   | "hackernews"
@@ -10,15 +10,15 @@ export type SourceId =
 export type LaneId = "news" | "papers";
 
 export type FeedItem = {
-  /** Chiave di dedup: arXiv id quando disponibile, altrimenti `${source}:${id nativo}`. */
+  /** Dedup key: arXiv id when available, otherwise `${source}:${native id}`. */
   key: string;
   source: SourceId;
   title: string;
-  /** Link all'articolo/paper vero, non alla pagina di discussione. */
+  /** Link to the actual article/paper, not to the discussion page. */
   url: string;
-  /** Pagina di discussione della fonte, quando esiste ed è diversa da `url`. */
+  /** The source's discussion page, when it exists and differs from `url`. */
   discussionUrl: string | null;
-  /** Punteggio nativo della fonte: non confrontabile tra fonti diverse. */
+  /** The source's native score: not comparable across different sources. */
   score: number | null;
   commentCount: number | null;
   author: string | null;
@@ -34,13 +34,13 @@ export const SOURCE_LABELS: Record<SourceId, string> = {
   arxiv: "arXiv",
 };
 
-/** Una fonte che ha fallito: la corsia resta viva, l'errore è visibile in UI. */
+/** A source that failed: the lane stays alive, the error is visible in the UI. */
 export type SourceFailure = {
   source: SourceId;
   message: string;
 };
 
-/** Gli item di una fonte e il momento in cui sono stati scaricati davvero. */
+/** A source's items and the moment they were actually downloaded. */
 export type SourceSnapshot = {
   items: FeedItem[];
   fetchedAt: string;
@@ -51,17 +51,17 @@ export type Lane = {
   items: FeedItem[];
   failures: SourceFailure[];
   notices?: string[];
-  /** Conteggi originali prima della deduplicazione, per distinguere feed vuoti da duplicati. */
+  /** Original counts before deduplication, to tell empty feeds from duplicates. */
   sourceItemCounts?: Partial<Record<SourceId, number>>;
-  /** Quando ogni fonte riuscita è stata scaricata, non quando è stata servita. */
+  /** When each successful source was downloaded, not when it was served. */
   fetchedAt: Partial<Record<SourceId, string>>;
 };
 
 /**
- * Oltre questa età i dati di una fonte vanno richiesti di nuovo. Le cache sono
- * stale-while-revalidate: con una o due persone quasi ogni visita è la prima
- * dopo una pausa, e riceve la copia vecchia mentre quella nuova si prepara.
- * Le soglie stanno poco sopra il `revalidate` del `cacheLife` di ogni fonte.
+ * Beyond this age a source's data must be requested again. The caches are
+ * stale-while-revalidate: with one or two people almost every visit is the first
+ * after a pause, and it receives the old copy while the new one is prepared.
+ * The thresholds sit just above the `revalidate` of each source's `cacheLife`.
  */
 const REFRESH_AFTER_MS: Record<SourceId, number> = {
   hackernews: 5 * 60_000,
@@ -99,9 +99,9 @@ export const LANE_SOURCES: Record<LaneId, readonly SourceId[]> = {
 };
 
 /**
- * Tiene i primi `perSource` item di ogni fonte **preservando l'ordine ricevuto**.
- * Va quindi applicato dopo `sortItems`, così ogni fonte contribuisce i suoi
- * migliori N secondo il criterio scelto e non i primi N che ha restituito.
+ * Keeps the first `perSource` items of each source **preserving the received order**.
+ * It must therefore be applied after `sortItems`, so each source contributes its
+ * best N by the chosen criterion and not the first N it returned.
  */
 export function takePerSource(
   items: FeedItem[],
@@ -118,7 +118,7 @@ export function takePerSource(
   });
 }
 
-/** "Ultime 24 ore" o tutto quello che le fonti restituiscono. */
+/** "Ultime 24 ore" (last 24 hours) or everything the sources return. */
 export type Period = "all" | "day";
 
 const DAY_MS = 24 * 3_600_000;
@@ -137,7 +137,7 @@ export function filterByPeriod(
 export function sortItems(items: FeedItem[], mode: SortMode): FeedItem[] {
   switch (mode) {
     case "scientific":
-      // La priorità scientifica viene applicata dai verdetti, mai dai voti.
+      // Scientific priority is applied by the verdicts, never by the votes.
       return sortByPublishedAtDesc(items);
     case "recent":
       return sortByPublishedAtDesc(items);
@@ -148,7 +148,7 @@ export function sortItems(items: FeedItem[], mode: SortMode): FeedItem[] {
   }
 }
 
-/** Alterna le fonti disponibili preservando l'ordine interno, senza quote di qualità artificiali. */
+/** Alternates the available sources preserving their internal order, without artificial quality quotas. */
 export function interleaveSources(items: readonly FeedItem[]): FeedItem[] {
   const bySource = new Map<SourceId, FeedItem[]>();
   for (const item of items) {
@@ -170,30 +170,30 @@ function sortByPublishedAtDesc(items: FeedItem[]): FeedItem[] {
   );
 }
 
-/** Le due grandezze che si confrontano fra fonti, sempre dentro la fonte. */
+/** The two quantities compared across sources, always within the source. */
 export type SourceMetric = "score" | "commentCount";
 
-/** Posizione nella classifica della propria fonte: 1 è il primo. */
+/** Position in the ranking of its own source: 1 is the first. */
 export type SourcePlace = { position: number; outOf: number };
 
-/** Posizione di ogni item, per chiave, sul criterio dato. */
+/** Position of each item, by key, on the given criterion. */
 export type SourceRanking = ReadonlyMap<string, SourcePlace>;
 
 /**
- * Gli score grezzi non sono confrontabili tra fonti (1297 punti HN contro 47 di
- * Lobsters), la posizione nella propria fonte sì: "terzo su 50 di HN" vale come
- * "secondo su 25 di Lobsters". Si ordina su quella quota, a parità vince il più
- * recente. Lo stesso vale per i commenti.
+ * Raw scores are not comparable across sources (1297 HN points against 47 on
+ * Lobsters), the position within one's own source is: "third out of 50 on HN" is
+ * worth "second out of 25 on Lobsters". Items are ordered on that share, on a tie
+ * the most recent wins. The same applies to comments.
  *
- * Posizione e non rapporto con il massimo: con il massimo un solo post virale
- * da 3000 punti schiaccerebbe sotto il 30% tutti gli altri della sua fonte. E
- * non rapporto con il totale: premierebbe le fonti che restituiscono meno item.
+ * Position and not ratio to the maximum: with the maximum a single viral post
+ * of 3000 points would crush all the others of its source below 30%. And
+ * not ratio to the total: it would reward the sources that return fewer items.
  *
- * Non si può usare la posizione nativa della fonte come classifica: l'ordine di
- * `huggingface.co/api/daily_papers` non è per upvote, quindi darebbe un ranking
- * finto. Le fonti senza punteggio (arXiv) finiscono in fondo. Lì la data non
- * decide niente, perché arXiv data l'annuncio e non il paper: tutti gli item di
- * un giorno sono pari, e l'ordinamento stabile lascia quello del feed.
+ * The source's native position cannot be used as a ranking: the order of
+ * `huggingface.co/api/daily_papers` is not by upvotes, so it would give a fake
+ * ranking. Sources without a score (arXiv) end up at the bottom. There the date
+ * decides nothing, because arXiv dates the announcement and not the paper: all
+ * items of one day are equal, and the stable sort keeps the feed's order.
  */
 function sortByPlaceInSource(
   items: FeedItem[],
@@ -209,9 +209,9 @@ function sortByPlaceInSource(
 }
 
 /**
- * Classifica ogni fonte per conto suo. A pari valore pari posizione (1, 2, 2,
- * 4): due item con gli stessi punti non devono finire uno sopra l'altro per
- * caso. Gli item senza valore non entrano in classifica.
+ * Ranks each source on its own. Equal value, equal position (1, 2, 2,
+ * 4): two items with the same points must not end up one above the other by
+ * chance. Items without a value do not enter the ranking.
  */
 export function rankWithinSource(
   items: FeedItem[],
@@ -220,8 +220,8 @@ export function rankWithinSource(
   const valuesBySource = new Map<SourceId, number[]>();
   for (const item of items) {
     const value = item[metric];
-    // `typeof` e non `!== null`: un solo score `undefined` produrrebbe NaN, e
-    // con NaN il confronto dell'intera fonte smetterebbe di funzionare.
+    // `typeof` and not `!== null`: a single `undefined` score would produce NaN, and
+    // with NaN the comparison of the whole source would stop working.
     if (typeof value === "number") {
       const values = valuesBySource.get(item.source) ?? [];
       values.push(value);
@@ -247,8 +247,8 @@ export function rankWithinSource(
 }
 
 /**
- * Quota della fonte che l'item ha sotto di sé, sé compreso: 1 per il primo,
- * vicino a 0 per l'ultimo. -1 fuori classifica, sotto chiunque ci sia.
+ * Share of the source that the item has below it, itself included: 1 for the first,
+ * close to 0 for the last. -1 when unranked, below anyone who is ranked.
  */
 export function topShareOf(place: SourcePlace | undefined): number {
   if (!place) {

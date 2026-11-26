@@ -24,7 +24,7 @@ export function parseQualityRecords(text: string | null): Map<string, QualityRec
             Number.isFinite(Date.parse(record.quality.assessment.assessedAt)) && parseAssessment(record.quality.assessment, record.quality.assessment.version)))) {
         records.set(record.quality.key, record);
       }
-    } catch { /* Una riga rovinata non azzera gli altri risultati. */ }
+    } catch { /* A damaged line does not wipe out the other results. */ }
   }
   return records;
 }
@@ -34,7 +34,7 @@ export async function readQualityRecords() {
 }
 
 export function isFresh(record: QualityRecord, now = Date.now()): boolean {
-  // Errori temporanei si riprovano; nessun giudizio negativo viene dedotto da un errore.
+  // Temporary errors are retried; no negative judgement is inferred from an error.
   const ttl = record.quality.warnings.length ? 15 * 60_000 : DAY;
   return now - Date.parse(record.quality.checkedAt) < ttl &&
     (!record.quality.assessment || record.quality.assessment.version === METHOD_VERSION);

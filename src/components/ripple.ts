@@ -1,10 +1,10 @@
 import type { PointerEvent } from "react";
 
 /**
- * Onda di pressione di Material 3: un cerchio che parte dal punto toccato e
- * si allarga dentro l'elemento marcato `data-ripple-host`, poi sparisce. Il
- * contenitore va renderizzato vuoto da React: i figli li aggiunge e li toglie
- * solo questa funzione, così la riconciliazione non li tocca mai.
+ * Material 3 press ripple: a circle that starts from the touched point and
+ * expands inside the element marked `data-ripple-host`, then disappears. The
+ * container must be rendered empty by React: only this function adds and
+ * removes its children, so reconciliation never touches them.
  */
 export function spawnRipple(event: PointerEvent<HTMLElement>): void {
   const host = event.currentTarget.querySelector<HTMLElement>(
@@ -18,8 +18,8 @@ export function spawnRipple(event: PointerEvent<HTMLElement>): void {
   }
 
   const rect = host.getBoundingClientRect();
-  // Il tocco può cadere fuori dalla pillola (la cella è più grande): l'onda
-  // parte dal punto più vicino dentro la pillola.
+  // The touch can land outside the pill (the cell is larger): the ripple
+  // starts from the closest point inside the pill.
   const x = clamp(event.clientX - rect.left, 0, rect.width);
   const y = clamp(event.clientY - rect.top, 0, rect.height);
   const size = 2 * Math.hypot(rect.width, rect.height);

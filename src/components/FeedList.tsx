@@ -32,7 +32,7 @@ const SOURCE_COLORS: Record<SourceId, string> = {
   arxiv: "text-src-arxiv",
 };
 
-/** Nome breve per le etichette: "Il più votato su HN". */
+/** Short name for the labels: "Il più votato su HN" (the most voted on HN). */
 const SOURCE_SHORT_LABELS: Record<SourceId, string> = {
   hackernews: "HN",
   lobsters: "Lobsters",
@@ -42,8 +42,8 @@ const SOURCE_SHORT_LABELS: Record<SourceId, string> = {
 };
 
 /**
- * Entro quante ore un item è "Nuovo". Le front page girano in mezza giornata;
- * HF e arXiv pubblicano una volta al giorno, e un paper di ieri è ancora fresco.
+ * Within how many hours an item is "Nuovo" (new). Front pages turn over in half
+ * a day; HF and arXiv publish once a day, and a paper from yesterday is still fresh.
  */
 const NEW_WITHIN_HOURS: Record<SourceId, number> = {
   hackernews: 12,
@@ -53,18 +53,18 @@ const NEW_WITHIN_HOURS: Record<SourceId, number> = {
   arxiv: 36,
 };
 
-/** Nel primo 10% della propria fonte l'item è "In cima". */
+/** In the top 10% of its own source the item is "In cima" (at the top). */
 const TOP_FRACTION = 0.1;
 
 /**
- * Una discussione è accesa quando i commenti arrivano ad almeno il 60% dei
- * punti. Sotto i 20 commenti il rapporto è rumore: 3 commenti su 4 punti non
- * sono un dibattito.
+ * A discussion is heated when the comments reach at least 60% of the
+ * points. Below 20 comments the ratio is noise: 3 comments on 4 points are
+ * not a debate.
  */
 const HEATED_COMMENTS_PER_POINT = 0.6;
 const HEATED_MIN_COMMENTS = 20;
 
-/** Oltre questa lunghezza, da `sm` in su, il riassunto parte chiuso a 3 righe. */
+/** Beyond this length, from `sm` up, the summary starts collapsed to 3 lines. */
 const LONG_SUMMARY_CHARS = 320;
 
 const RECENT_BAND_HOURS = 24;
@@ -91,31 +91,31 @@ export function FeedList({
 }: {
   lane: Pick<Lane, "items" | "failures">;
   emptyLabel: string;
-  /** Azione extra accanto al segnalibro, es. "Letto" nella coda. */
+  /** Extra action next to the bookmark, e.g. "Letto" (read) in the queue. */
   rowAction?: (item: FeedItem) => ReactNode;
   paperQuality?: ReadonlyMap<string, PaperQuality>;
   showPendingQuality?: boolean;
-  /** Riassunto in italiano per chiave, solo nella corsia Papers. */
+  /** Summary in Italian by key, only in the Papers lane. */
   summaries?: ReadonlyMap<string, string>;
-  /** Paper il cui riassunto si sta generando adesso. */
+  /** Papers whose summary is being generated right now. */
   pendingSummaryKeys?: ReadonlySet<string>;
   /**
-   * Posizione di ogni item nella propria fonte, calcolata su tutta la corsia e
-   * non solo sulle righe visibili: barretta e "In cima a" restano stabili
-   * cambiando i filtri. Senza, la riga mostra i numeri e basta.
+   * Position of each item within its own source, computed on the whole lane and
+   * not only on the visible rows: bar and "In cima a" (at the top of) stay stable
+   * when the filters change. Without it, the row shows just the numbers.
    */
   rankings?: Record<SourceMetric, SourceRanking>;
-  /** Cosa misura la barretta: lo stesso criterio dell'ordinamento scelto. */
+  /** What the bar measures: the same criterion as the chosen ordering. */
   barMetric?: SourceMetric;
-  /** Divide in "Ultime 24 ore" e "Prima", mantenendo l'ordine scelto. */
+  /** Splits into "Ultime 24 ore" (last 24 hours) and "Prima" (earlier), keeping the chosen order. */
   groupByAge?: boolean;
   /**
-   * Stacca in un gruppo con il suo titolo gli item senza voti, che una
-   * classifica per voti lascia in fondo nell'ordine del feed.
+   * Moves into a group with its own title the items without votes, which a
+   * ranking by votes leaves at the bottom in feed order.
    */
   groupUnscored?: boolean;
 }) {
-  // Un solo abbonamento allo store per lista, non uno per riga.
+  // A single store subscription per list, not one per row.
   const { visitedKeys, markVisited } = useVisitedItems();
   const now = useNow();
   const settingsStatus = useSettingsStatus();
@@ -123,9 +123,9 @@ export function FeedList({
     null,
   );
 
-  // La card è per chi ha fatto l'accesso ("error" vuol dire accesso fatto ma
-  // impostazioni non caricate). Per gli altri, e durante il caricamento, il
-  // link resta un link.
+  // The card is for signed-in users ("error" means signed in but settings
+  // not loaded). For the others, and during loading, the link stays a
+  // link.
   const canReadHere = settingsStatus === "ready" || settingsStatus === "error";
   const openLink = (
     item: FeedItem,
@@ -198,7 +198,7 @@ export function FeedList({
 
       {reading && (
         <ReaderSheet
-          // Una card nuova per ogni item: tab e scroll non passano dall'uno all'altro.
+          // A new card for each item: tab and scroll do not carry over from one to the next.
           key={reading.item.key}
           item={reading.item}
           initialTab={reading.tab}
@@ -210,8 +210,8 @@ export function FeedList({
 }
 
 /**
- * Ctrl/Cmd, Shift, Alt e il tasto centrale vogliono la scheda nuova o il menu
- * del browser: solo il click sinistro semplice apre la card.
+ * Ctrl/Cmd, Shift, Alt and the middle button want the new tab or the browser
+ * menu: only a plain left click opens the card.
  */
 function isPlainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return (
@@ -223,7 +223,7 @@ function isPlainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   );
 }
 
-/** Il titolo di una self-post porta alla discussione: la card apre i commenti. */
+/** The title of a self-post leads to the discussion: the card opens the comments. */
 function titleTabOf(item: FeedItem): ReaderTab {
   return isSelfPost(item) ? "comments" : "article";
 }
@@ -257,9 +257,9 @@ function groupsByAge(items: FeedItem[], now: number): ItemGroup[] {
 }
 
 /**
- * Sui paper gli unici senza voti sono quelli di arXiv, e fra loro non c'è
- * ordine vero: il titolo lo dice, invece di lasciarli sembrare il fondo della
- * classifica.
+ * Among papers the only ones without votes are arXiv's, and among them there
+ * is no real order: the title says so, instead of letting them look like the
+ * bottom of the ranking.
  */
 function groupsByScore(items: FeedItem[]): ItemGroup[] {
   const isScored = (item: FeedItem) => typeof item.score === "number";
@@ -290,14 +290,14 @@ function FeedRow({
   isVisited: boolean;
   quality?: PaperQuality;
   isQualityPending: boolean;
-  /** Segna letto e, se si può, apre la card invece del sito. */
+  /** Marks as read and, when possible, opens the card instead of the site. */
   onOpenLink: OpenLink;
   action: ReactNode;
   summary: string | null;
   isSummaryPending: boolean;
-  /** Posizione per punti nella fonte; null senza punti o senza classifica. */
+  /** Position by points within the source; null without points or without a ranking. */
   scorePlace: SourcePlace | null;
-  /** Barretta del criterio di ordinamento; null dove non c'è classifica. */
+  /** Bar of the ordering criterion; null where there is no ranking. */
   bar: PlaceBarValue | null;
   now: number | null;
 }) {
@@ -370,7 +370,7 @@ function FeedRow({
   );
 }
 
-/** Per le news il sito d'origine, per i paper chi li ha segnalati o firmati. */
+/** For news the originating site, for papers whoever submitted or authored them. */
 function BylineOf({ item }: { item: FeedItem }) {
   if (LANE_SOURCES.papers.includes(item.source)) {
     return item.author ? <span>{item.author}</span> : null;
@@ -385,8 +385,8 @@ function Summary({ text }: { text: string }) {
 
   return (
     <div className="mt-2 px-4 [grid-area:summary] sm:px-0">
-      {/* Su mobile il riassunto è sempre intero: è il motivo per aprire la
-          corsia dal telefono, e il "leggi tutto" costerebbe un tocco in più. */}
+      {/* On mobile the summary is always whole: it is the reason to open the
+          lane from the phone, and "leggi tutto" (read all) would cost one more tap. */}
       <p
         className={`max-w-[66ch] font-serif text-lg leading-[1.6] text-pretty text-prose ${
           isClamped ? "sm:line-clamp-3" : ""
@@ -420,7 +420,7 @@ function Stats({
   if (!showScore && !item.discussionUrl) return null;
   const isHeated = showScore && isHeatedDiscussion(item);
   const scoreUnit = LANE_SOURCES.papers.includes(item.source) ? "voti" : "punti";
-  // La barretta sta accanto al numero che decide l'ordine.
+  // The bar sits next to the number that decides the order.
   const barFor = (metric: SourceMetric) =>
     bar?.metric === metric ? (
       <PlaceBar value={bar} source={item.source} />
@@ -471,9 +471,9 @@ const PLACE_BAR_CRITERION: Record<SourceMetric, string> = {
 };
 
 /**
- * Dove sta l'item nella sua fonte sul criterio scelto: la barretta è piena per
- * il primo, e il "top 4%" dice in chiaro il numero su cui la lista è ordinata.
- * I punti grezzi saltano fra una fonte e l'altra, questo no.
+ * Where the item sits within its source on the chosen criterion: the bar is full
+ * for the first, and the "top 4%" states plainly the number the list is ordered on.
+ * Raw points jump from one source to another, this does not.
  */
 function PlaceBar({ value, source }: { value: PlaceBarValue; source: SourceId }) {
   const { position, outOf } = value.place;

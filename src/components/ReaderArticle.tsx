@@ -4,7 +4,7 @@ import { hostnameOf } from "@/lib/feed";
 import { usePaperDigest } from "@/lib/reader-content";
 import type { ReaderArticle as Article, PaperLinks } from "@/lib/reader-model";
 
-/** "Problema: …": l'etichetta con cui il prompt apre ogni paragrafo del riassunto. */
+/** "Problema: …" (Problem): the label with which the prompt opens each paragraph of the summary. */
 const DIGEST_LABEL_PATTERN = /^([A-ZÀ-Ý][^:\n]{1,24}):\s+/;
 
 const digestDate = new Intl.DateTimeFormat("it-IT", {
@@ -15,16 +15,17 @@ const digestDate = new Intl.DateTimeFormat("it-IT", {
 });
 
 /**
- * L'articolo estratto, nello stesso serif dei riassunti. L'HTML arriva già
- * ripulito dal server (`cleanHtml`): qui si mostra e basta. Di un paper c'è
- * solo l'abstract, con il rimando al testo intero e il riassunto a richiesta.
+ * The extracted article, in the same serif as the summaries. The HTML arrives
+ * already cleaned by the server (`cleanHtml`): here it is only shown. For a
+ * paper there is only the abstract, with the link to the full text and the
+ * summary on request.
  */
 export function ReaderArticle({ article }: { article: Article }) {
   if (article.status === "unavailable") {
     return <UnavailableArticle article={article} />;
   }
 
-  // Sui comunicati stampa sito e autore spesso coincidono: una volta basta.
+  // On press releases site and author often coincide: once is enough.
   const meta = [
     ...new Set([article.siteName ?? hostnameOf(article.sourceUrl), article.byline]),
   ]
@@ -59,7 +60,7 @@ function PaperActions({ paper }: { paper: PaperLinks }) {
   return (
     <section className="mt-4 flex flex-col gap-5 border-t border-rule pt-5">
       <div className="flex flex-wrap items-center gap-3">
-        {/* Pulsante tonale di M3 per il rimando, pieno per l'azione che costa. */}
+        {/* M3 tonal button for the link, filled for the action that costs money. */}
         <a
           href={paper.fullTextUrl}
           target="_blank"
@@ -102,7 +103,7 @@ function PaperActions({ paper }: { paper: PaperLinks }) {
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold text-muted">Riassunto del paper intero</h3>
           <div className="reader-prose">
-            {/* Il testo non cambia una volta scritto: l'indice è una chiave stabile. */}
+            {/* The text does not change once written: the index is a stable key. */}
             {state.digest.text.split(/\n\s*\n/).map((paragraph, index) => (
               <DigestParagraph key={index} text={paragraph.trim()} />
             ))}
@@ -122,8 +123,8 @@ function DigestParagraph({ text }: { text: string }) {
   if (!match) {
     return <p>{text}</p>;
   }
-  // Dopo i due punti il modello scrive in minuscolo; con l'etichetta in
-  // grassetto seguita dal punto, la frase riparte con la maiuscola.
+  // After the colon the model writes in lowercase; with the label in bold
+  // followed by a full stop, the sentence restarts with a capital letter.
   const body = text.slice(match[0].length);
   return (
     <p>
@@ -146,7 +147,7 @@ function UnavailableArticle({
           {article.excerpt}
         </p>
       )}
-      {/* Pulsante tonale di M3: è l'unica azione utile rimasta. */}
+      {/* M3 tonal button: it is the only useful action left. */}
       <a
         href={article.sourceUrl}
         target="_blank"

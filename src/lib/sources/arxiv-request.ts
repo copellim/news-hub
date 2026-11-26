@@ -1,7 +1,7 @@
 import "server-only";
 import { fetchText } from "./http";
 
-// Una connessione alla volta, con almeno 3 s tra richieste alle fonti arXiv.
+// One connection at a time, with at least 3 s between requests to the arXiv sources.
 let queue: Promise<void> = Promise.resolve();
 let lastStarted = 0;
 export function fetchArxivText(url: string): Promise<string> {

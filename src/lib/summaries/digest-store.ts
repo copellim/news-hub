@@ -3,11 +3,11 @@ import "server-only";
 import { readLatestBlobText, updateBlobText } from "@/lib/blob-store";
 
 /**
- * Il riassunto del paper intero sta in un file per paper, comune a tutti gli
- * utenti, e non nel `summaries.jsonl` della lista: quel file si scarica intero
- * a ogni apertura di Papers, e qualche centinaio di parole per paper lo
- * gonfierebbe per testi che si leggono solo aprendo la card. Qui si legge solo
- * il paper aperto, e si scrive una volta per paper, a richiesta.
+ * The whole-paper summary lives in one file per paper, shared by all users,
+ * and not in the list's `summaries.jsonl`: that file is downloaded whole
+ * every time Papers is opened, and a few hundred words per paper would
+ * bloat it with texts read only by opening the card. Here only the open
+ * paper is read, and it is written once per paper, on request.
  */
 const DIGEST_CONTENT_TYPE = "application/json";
 
@@ -15,14 +15,14 @@ export type PaperDigestRecord = {
   key: string;
   text: string;
   model: string;
-  /** Cambia quando cambia il prompt: un riassunto vecchio si può rigenerare. */
+  /** Changes when the prompt changes: an old summary can be regenerated. */
   promptVersion: number;
   createdAt: string;
 };
 
 /**
- * Dall'origine e non dalla CDN: un riassunto appena salvato deve comparire
- * alla prossima apertura, non un minuto dopo. Si legge una volta per card.
+ * From the origin and not the CDN: a summary just saved must appear at the
+ * next opening, not a minute later. It is read once per card.
  */
 export async function readPaperDigest(
   arxivId: string,

@@ -1,35 +1,35 @@
 /**
- * Forma dello stato utente e regole per modificarlo. Client-safe: lo usa il
- * browser per aggiornare subito la pagina e il server per applicare le stesse
- * modifiche al file su Blob, così le due copie non possono divergere.
+ * Shape of the user state and rules for changing it. Client-safe: the browser
+ * uses it to update the page immediately and the server to apply the same
+ * changes to the file on Blob, so the two copies cannot diverge.
  */
 
 import { DEFAULT_ARXIV_CATEGORIES, isKnownArxivCategory } from "@/lib/config";
 import type { FeedItem } from "@/lib/feed";
 
 /**
- * Un articolo messo da parte. Si salva l'item intero e non il solo id: resta
- * leggibile anche quando è uscito dalla front page e le fonti non lo danno più.
+ * An article set aside. The whole item is saved and not just the id: it stays
+ * readable even when it has left the front page and the sources no longer return it.
  */
 export type Bookmark = FeedItem & {
-  /** ISO. Ordina la lista. */
+  /** ISO. Orders the list. */
   savedAt: string;
 };
 
-/** Tutto ciò che l'app ricorda di un utente, in un oggetto solo. */
+/** Everything the app remembers about a user, in a single object. */
 export type Settings = {
   version: 2;
   paperScreening: boolean;
   paperPersonalization: boolean;
   arxivCategories: string[];
   bookmarks: Bookmark[];
-  /** Chiavi degli articoli aperti almeno una volta. */
+  /** Keys of the articles opened at least once. */
   visited: string[];
 };
 
 /**
- * Tetto ai visitati: la lista cresce a ogni click e il file viene riletto e
- * riscritto per intero a ogni salvataggio. Si scartano i più vecchi.
+ * Cap on visited items: the list grows at every click and the file is reread and
+ * rewritten whole at every save. The oldest are discarded.
  */
 const MAX_VISITED = 2000;
 
@@ -43,9 +43,9 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * Il client manda modifiche, non l'oggetto intero: se mandasse l'oggetto, una
- * scheda con una copia vecchia cancellerebbe quello che un'altra ha appena
- * salvato. Il server applica le modifiche all'ultima versione del file.
+ * The client sends changes, not the whole object: if it sent the object, a
+ * tab with an old copy would delete what another one has just
+ * saved. The server applies the changes to the latest version of the file.
  */
 export type SettingsOperation =
   | { type: "addBookmark"; bookmark: Bookmark }
@@ -54,7 +54,7 @@ export type SettingsOperation =
   | { type: "setPaperScreening"; enabled: boolean }
   | { type: "setPaperPersonalization"; enabled: boolean }
   | { type: "setCategories"; categories: string[] }
-  /** Recupero una tantum di quello che il browser teneva nel localStorage. */
+  /** One-off recovery of what the browser kept in localStorage. */
   | { type: "mergeLocal"; settings: Settings };
 
 export function applyOperations(
@@ -106,9 +106,9 @@ function withoutBookmark(bookmarks: Bookmark[], key: string): Bookmark[] {
 }
 
 /**
- * Unione e non sostituzione: due browser con dati diversi devono poter
- * confluire nello stesso account senza che il secondo cancelli il primo. Le
- * categorie locali valgono solo se l'account ha ancora quelle di default.
+ * Union and not replacement: two browsers with different data must be able to
+ * merge into the same account without the second deleting the first. The
+ * local categories apply only if the account still has the default ones.
  */
 function mergeLocalSettings(remote: Settings, local: Settings): Settings {
   const remoteKeys = new Set(remote.bookmarks.map((bookmark) => bookmark.key));
@@ -134,17 +134,17 @@ function mergeLocalSettings(remote: Settings, local: Settings): Settings {
   };
 }
 
-/** Confronto per insieme: l'ordine dei chip non cambia la selezione. */
+/** Set comparison: the order of the chips does not change the selection. */
 export function selectionKeyOf(categories: readonly string[]): string {
   return [...categories].sort().join(",");
 }
 
-// --- Validazione ----------------------------------------------------------
+// --- Validation ------------------------------------------------------------
 
 /**
- * Accetta l'oggetto solo se riconoscibile, e scarta le singole voci non valide
- * invece di rifiutare tutto: un file leggermente sporco non deve azzerare le
- * impostazioni. Le categorie sconosciute cadono perché il catalogo è la
+ * Accepts the object only if recognisable, and discards the single invalid entries
+ * instead of rejecting everything: a slightly dirty file must not reset the
+ * settings. Unknown categories are dropped because the catalog is the
  * whitelist.
  */
 export function normalizeSettings(value: unknown): Settings | null {
@@ -163,7 +163,7 @@ export function normalizeSettings(value: unknown): Settings | null {
 
   return {
     version: 2,
-    // Migrazione esplicita v1 → v2: conserva i dati e attiva la scrematura.
+    // Explicit v1 → v2 migration: keeps the data and turns on the screening.
     paperScreening: candidate.version === 2 && typeof candidate.paperScreening === "boolean"
       ? candidate.paperScreening : true,
     paperPersonalization: typeof candidate.paperPersonalization === "boolean" ? candidate.paperPersonalization : true,
@@ -176,9 +176,9 @@ export function normalizeSettings(value: unknown): Settings | null {
 }
 
 /**
- * Le operazioni arrivano dal client e finiscono nel file dell'utente: ognuna
- * va controllata come un input esterno. Restituisce la versione ripulita, o
- * `null` se l'operazione non è riconoscibile.
+ * The operations come from the client and end up in the user's file: each one
+ * must be checked like external input. Returns the cleaned version, or
+ * `null` if the operation is not recognisable.
  */
 export function parseSettingsOperation(
   value: unknown,

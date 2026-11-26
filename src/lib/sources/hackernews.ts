@@ -7,9 +7,9 @@ import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson } from "./http";
 
 /**
- * Algolia invece della Firebase API: `front_page` restituisce gli item già
- * idratati in una chiamata, mentre `topstories.json` dà solo 500 id e obbliga a
- * un N+1.
+ * Algolia instead of the Firebase API: `front_page` returns the items already
+ * hydrated in one call, while `topstories.json` gives only 500 ids and forces
+ * an N+1.
  */
 const FRONT_PAGE_URL = `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=${SOURCE_FETCH_LIMIT}`;
 
@@ -44,11 +44,11 @@ function toFeedItem(hit: AlgoliaStory): FeedItem {
     key: `hackernews:${hit.objectID}`,
     source: "hackernews",
     title: hit.title as string,
-    // Ask HN e le self-post non hanno url esterno: il thread è il contenuto.
+    // Ask HN and self-posts have no external url: the thread is the content.
     url: hit.url ?? discussionUrl,
     discussionUrl,
-    // Algolia a volte omette i campi: `undefined` inquinerebbe i calcoli
-    // sul punteggio, `null` significa esplicitamente "senza punteggio".
+    // Algolia sometimes omits fields: `undefined` would pollute the score
+    // calculations, `null` explicitly means "no score".
     score: hit.points ?? null,
     commentCount: hit.num_comments ?? null,
     author: hit.author,

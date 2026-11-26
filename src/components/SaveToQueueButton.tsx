@@ -3,7 +3,7 @@
 import type { FeedItem } from "@/lib/feed";
 import { useBookmarks, useSettingsStatus } from "@/lib/settings";
 
-/** Area di tocco minima consigliata su mobile: l'icona da sola è 20 px. */
+/** Minimum recommended touch target on mobile: the icon alone is 20 px. */
 const TOUCH_TARGET_CLASS = "size-11 shrink-0";
 
 export function SaveToQueueButton({ item }: { item: FeedItem }) {
@@ -11,12 +11,12 @@ export function SaveToQueueButton({ item }: { item: FeedItem }) {
   const status = useSettingsStatus();
   const isSaved = bookmarkedKeys.has(item.key);
 
-  // I segnalibri stanno nell'account: senza accesso non c'è dove salvarli.
+  // Bookmarks live in the account: without sign-in there is nowhere to save them.
   if (status === "signedOut" || status === "error") {
     return null;
   }
   if (status === "loading") {
-    // Il posto resta riservato mentre lo stato arriva.
+    // The space stays reserved while the state arrives.
     return <span aria-hidden className={TOUCH_TARGET_CLASS} />;
   }
 

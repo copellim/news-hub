@@ -24,7 +24,7 @@ async function getCategoryFeed(category: string): Promise<CategoryFeed> {
   if (recent) {
     try {
       entries = uniqueEntries([...entries, ...parseArxivListing(await fetchArxivText(`https://arxiv.org/list/${category}/recent?skip=0&show=${ARXIV_CANDIDATE_LIMIT}`))]);
-      // Le categorie poco attive possono avere meno di 20 paper nell'ultima settimana.
+      // Less active categories may have fewer than 20 papers in the last week.
       const now = new Date();
       for (let monthsBack = 1; entries.length < ARXIV_CANDIDATE_LIMIT && monthsBack <= 3; monthsBack++) {
         const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsBack, 1));
@@ -59,7 +59,7 @@ async function getPool(categories: readonly string[]) {
 
 export async function getArxivSnapshot(categories: readonly string[]): Promise<SourceSnapshot> {
   const pool = await getPool(categories);
-  // Il margine viene tagliato a 50 DOPO la deduplicazione con HF in getLane.
+  // The margin is cut to 50 AFTER the deduplication with HF in getLane.
   return { items: pool.entries.map((entry) => entry.item), fetchedAt: pool.fetchedAt, notice: pool.notices.join(" · ") || undefined };
 }
 
@@ -116,7 +116,7 @@ export function parseArxivListing(html: string): ArxivEntry[] {
     const tags = [...(dd.querySelector(".list-subjects")?.textContent ?? "").matchAll(/\(([a-z-]+(?:\.[A-Za-z]+)?)\)/g)].map((match) => match[1]).slice(0, 3);
     entries.push({ item: makeItem(id, title, date, clean(dd.querySelector(".list-authors a")?.textContent ?? "") || null, tags), abstract: "" });
   }
-  // Un HTML diverso (challenge, errore o cambio markup) non deve diventare una fonte vuota silenziosa.
+  // A different HTML (challenge, error or markup change) must not become a silently empty source.
   if (!entries.length && !/No (?:articles|papers|entries)|No updates/i.test(document.querySelector("#dlpage")?.textContent ?? "")) throw new Error("Lista arXiv non riconosciuta");
   return entries;
 }

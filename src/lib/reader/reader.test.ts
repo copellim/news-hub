@@ -7,7 +7,7 @@ import { cleanHtml } from "./sanitize";
 const LONG_PARAGRAPH = "Testo di prova di un articolo vero. ".repeat(30);
 
 describe("cleanHtml", () => {
-  it("toglie script, stili ed eventi", () => {
+  it("removes scripts, styles and events", () => {
     const html = cleanHtml(
       '<p style="color:red" onclick="alert(1)">ciao</p><script>alert(1)</script>',
       "https://example.com/",
@@ -15,7 +15,7 @@ describe("cleanHtml", () => {
     expect(html).toBe("<p>ciao</p>");
   });
 
-  it("rende assoluti link e immagini e li apre fuori dalla card", () => {
+  it("makes links and images absolute and opens them outside the card", () => {
     const html = cleanHtml(
       '<a href="/doc">doc</a><img src="img/a.png" srcset="b.png 2x" alt="a">',
       "https://github.com/NVIDIA/OpenShell",
@@ -28,17 +28,17 @@ describe("cleanHtml", () => {
     expect(html).toContain('loading="lazy"');
   });
 
-  it("lascia i rimandi interni nella card", () => {
+  it("leaves internal references in the card", () => {
     const html = cleanHtml('<a href="#fn:1">1</a>', "https://example.com/post");
     expect(html).toBe('<a href="#fn:1">1</a>');
   });
 
-  it("scarta gli href javascript:", () => {
+  it("discards javascript: hrefs", () => {
     const html = cleanHtml('<a href="javascript:alert(1)">x</a>', "https://example.com/");
     expect(html).not.toContain("javascript");
   });
 
-  it("conserva il MathML", () => {
+  it("keeps MathML", () => {
     const html = cleanHtml(
       '<math display="inline"><mi>x</mi><mo>=</mo><mn>1</mn></math>',
       "https://arxiv.org/html/1",
@@ -48,7 +48,7 @@ describe("cleanHtml", () => {
 });
 
 describe("articleFromHtml", () => {
-  it("estrae l'articolo con titolo e testo ripulito", () => {
+  it("extracts the article with title and cleaned text", () => {
     const article = articleFromHtml(
       `<html><head><title>Un titolo</title></head><body><nav>menu</nav>
        <article><h1>Un titolo</h1><p>${LONG_PARAGRAPH}</p><p>${LONG_PARAGRAPH}</p>
@@ -64,7 +64,7 @@ describe("articleFromHtml", () => {
     }
   });
 
-  it("una pagina-app ricade su 'non leggibile' con la descrizione og", () => {
+  it("an app page falls back to 'unavailable' with the og description", () => {
     const article = articleFromHtml(
       `<html><head><meta property="og:description" content="Un'app per i colori">
        </head><body><div id="root"></div></body></html>`,
@@ -79,7 +79,7 @@ describe("articleFromHtml", () => {
 });
 
 describe("arXiv", () => {
-  it("riconosce abs, html e pdf, con o senza versione", () => {
+  it("recognises abs, html and pdf, with or without version", () => {
     expect(arxivIdOf(new URL("https://arxiv.org/abs/2610.28027"))).toBe("2610.28027");
     expect(arxivIdOf(new URL("https://arxiv.org/html/2410.23726v2"))).toBe("2410.23726v2");
     expect(arxivIdOf(new URL("https://arxiv.org/pdf/hep-th/9901001"))).toBe("hep-th/9901001");
@@ -93,7 +93,7 @@ describe("arXiv", () => {
      <a href="/pdf/2610.30926" class="abs-button download-pdf">View PDF</a>${downloads}
      </body></html>`;
 
-  it("dalla pagina abs prende solo l'abstract, e rimanda all'HTML quando c'è", () => {
+  it("takes only the abstract from the abs page, and links to the HTML when there is one", () => {
     const article = paperFromAbstractPage(
       abstractPage(
         '<a href="https://arxiv.org/html/2610.30926v1" class="abs-button" id="latexml-download-link">HTML</a>',
@@ -114,7 +114,7 @@ describe("arXiv", () => {
     });
   });
 
-  it("senza la versione HTML rimanda al PDF", () => {
+  it("without the HTML version links to the PDF", () => {
     const article = paperFromAbstractPage(
       abstractPage(""),
       "https://arxiv.org/abs/2303.03538v2",
@@ -122,7 +122,7 @@ describe("arXiv", () => {
     );
     expect(article).toMatchObject({
       paper: {
-        // La chiave è quella dei feed, senza versione.
+        // The key is the feeds' one, without version.
         key: "arxiv:2303.03538",
         fullTextUrl: "https://arxiv.org/pdf/2303.03538v2",
         fullTextFormat: "pdf",

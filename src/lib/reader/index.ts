@@ -15,7 +15,7 @@ import { extractorFor } from "./extractors";
 
 const ARXIV_KEY_PATTERN = /^arxiv:(\d{4}\.\d{4,5}(?:v\d+)?)$/;
 
-/** Le fonti news, il cui link porta a un sito qualsiasi: l'URL va cercato. */
+/** The news sources, whose link leads to any site: the URL has to be looked up. */
 const NEWS_SNAPSHOTS: Record<string, () => Promise<SourceSnapshot>> = {
   hackernews: getHackerNewsSnapshot,
   lobsters: getLobstersSnapshot,
@@ -23,10 +23,10 @@ const NEWS_SNAPSHOTS: Record<string, () => Promise<SourceSnapshot>> = {
 };
 
 /**
- * L'articolo di un item, oppure `null` se la chiave non corrisponde a niente
- * che l'app mostri. Il client manda solo la chiave e l'URL si ricava qui: un
- * paper dal suo id, una news dai feed in cache o dai segnalibri dell'utente.
- * Così il server non scarica mai un indirizzo scelto da chi chiama.
+ * The article of an item, or `null` if the key matches nothing
+ * the app shows. The client sends only the key and the URL is derived here: a
+ * paper from its id, a news item from the cached feeds or the user's bookmarks.
+ * This way the server never downloads an address chosen by the caller.
  */
 export async function getArticle(
   key: string,
@@ -39,7 +39,7 @@ export async function getArticle(
   try {
     return await extractArticle(url);
   } catch (error) {
-    // Fuori dalla cache: un sito giù adesso può rispondere alla prossima apertura.
+    // Outside the cache: a site down now may answer at the next opening.
     console.error(`Articolo di ${key} non estratto`, error);
     return unavailableArticle(
       url,
@@ -48,7 +48,7 @@ export async function getArticle(
   }
 }
 
-/** `null` se la fonte non ha commenti leggibili qui; gli errori di rete risalgono. */
+/** `null` if the source has no comments readable here; network errors propagate. */
 export async function getDiscussion(key: string): Promise<Discussion | null> {
   if (!discussionFetcherFor(key)) {
     return null;
@@ -57,9 +57,9 @@ export async function getDiscussion(key: string): Promise<Discussion | null> {
 }
 
 /**
- * Un articolo cambia di rado: una voce di cache per URL, per giorni. Gli errori
- * non entrano in cache, i "non leggibile qui" sì, perché una pagina-app resta
- * tale.
+ * An article rarely changes: one cache entry per URL, for days. Errors do
+ * not enter the cache, "not readable here" results do, because an app page
+ * stays one.
  */
 async function extractArticle(url: string): Promise<ReaderArticle> {
   "use cache";
@@ -69,7 +69,7 @@ async function extractArticle(url: string): Promise<ReaderArticle> {
   return extractorFor(parsed).extract(parsed);
 }
 
-/** Come le front page: i commenti arrivano di continuo. */
+/** Like the front pages: comments arrive continuously. */
 async function loadDiscussion(key: string): Promise<Discussion> {
   "use cache";
   cacheLife("minutes");
@@ -90,7 +90,7 @@ async function findArticleUrl(key: string, email: string): Promise<string | null
   return item && isWebUrl(item.url) ? item.url : null;
 }
 
-/** Solo lo snapshot della fonte della chiave, non l'intera corsia. */
+/** Only the snapshot of the key's source, not the whole lane. */
 async function findInFeed(key: string): Promise<FeedItem | undefined> {
   const source = key.slice(0, key.indexOf(":"));
   const getSnapshot = NEWS_SNAPSHOTS[source];
@@ -101,12 +101,12 @@ async function findInFeed(key: string): Promise<FeedItem | undefined> {
     const { items } = await getSnapshot();
     return items.find((item) => item.key === key);
   } catch {
-    // Fonte giù: resta la strada dei segnalibri.
+    // Source down: the bookmarks route remains.
     return undefined;
   }
 }
 
-/** Un articolo salvato può essere uscito dalla front page da giorni. */
+/** A saved article may have dropped off the front page days ago. */
 async function findInBookmarks(
   key: string,
   email: string,

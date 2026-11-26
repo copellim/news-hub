@@ -24,7 +24,7 @@ export type LobstersStoryWithComments = {
   comments: LobstersComment[];
 };
 
-/** Una chiamata: la storia arriva con tutti i commenti. */
+/** One call: the story arrives with all its comments. */
 export async function fetchLobstersDiscussion(id: string): Promise<Discussion> {
   const story = await fetchJson<LobstersStoryWithComments>(
     "lobsters",
@@ -34,8 +34,8 @@ export async function fetchLobstersDiscussion(id: string): Promise<Discussion> {
 }
 
 /**
- * La lista è piatta ma già nell'ordine del sito, un thread dopo l'altro: basta
- * appendere ogni commento al suo genitore, senza riordinare niente.
+ * The list is flat but already in the site's order, one thread after another: it is
+ * enough to append each comment to its parent, without reordering anything.
  */
 export function lobstersDiscussion(story: LobstersStoryWithComments): Discussion {
   const byId = new Map<string, Comment>();
@@ -68,7 +68,7 @@ function toComment(raw: LobstersComment): Comment {
   };
 }
 
-/** L'API ha cambiato forma nel tempo: stringa nelle versioni vecchie, oggetto ora. */
+/** The API has changed shape over time: a string in old versions, an object now. */
 function usernameOf(user: LobstersComment["commenting_user"]): string {
   return typeof user === "string" ? user : user.username;
 }

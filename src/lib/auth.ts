@@ -5,12 +5,12 @@ import { nextCookies } from "better-auth/next-js";
 import { headers } from "next/headers";
 
 /**
- * Login Google senza database: Better Auth senza `database` passa da solo alla
- * modalità stateless, con la sessione in un cookie cifrato (7 giorni). Il
- * rovescio è che una singola sessione non si può revocare: si invalidano
- * tutte cambiando `BETTER_AUTH_SECRET`.
+ * Google sign-in without a database: Better Auth without `database` switches by
+ * itself to stateless mode, with the session in an encrypted cookie (7 days).
+ * The downside is that a single session cannot be revoked: they are all
+ * invalidated by changing `BETTER_AUTH_SECRET`.
  *
- * È un portale personale: entra solo chi sta in `ALLOWED_EMAILS`.
+ * It is a personal portal: only those listed in `ALLOWED_EMAILS` get in.
  */
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -23,21 +23,21 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        // Senza database l'utente vive nell'adapter in memoria e di norma viene
-        // ricreato a ogni login: qui si respinge chi non è in lista prima che
-        // riceva un cookie. `getSignedInEmail` ricontrolla comunque.
+        // Without a database the user lives in the in-memory adapter and is
+        // normally recreated at every sign-in: here whoever is not listed is
+        // rejected before receiving a cookie. `getSignedInEmail` checks again anyway.
         before: async (user) => isAllowedEmail(user.email),
       },
     },
   },
-  // Deve restare l'ultimo plugin: imposta i cookie anche dalle Server Action.
+  // Must stay the last plugin: it sets cookies from Server Actions too.
   plugins: [nextCookies()],
 });
 
 /**
- * L'email dell'utente se è loggato **e** ammesso, altrimenti `null`. Il
- * controllo sull'allowlist si ripete qui perché l'hook di login non copre una
- * sessione aperta prima che un'email venisse tolta dalla lista.
+ * The user's email if signed in **and** allowed, otherwise `null`. The
+ * allowlist check is repeated here because the sign-in hook does not cover a
+ * session opened before an email was removed from the list.
  */
 export async function getSignedInEmail(): Promise<string | null> {
   const session = await auth.api.getSession({ headers: await headers() });

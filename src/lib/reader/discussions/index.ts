@@ -6,10 +6,10 @@ import { fetchHuggingFaceDiscussion } from "./huggingface";
 import { fetchLobstersDiscussion } from "./lobsters";
 
 /**
- * Un adapter per fonte, scelto dal prefisso della chiave. L'id finisce in un
- * URL di un host fisso, quindi basta che abbia la forma giusta: non serve
- * cercarlo nei feed. Le chiavi `arxiv:` vanno a HF, l'unica fonte paper con
- * commenti. Reddit non ha adapter.
+ * One adapter per source, chosen by the key's prefix. The id ends up in a
+ * URL on a fixed host, so it only needs the right shape: there is no need to
+ * look it up in the feeds. `arxiv:` keys go to HF, the only paper source with
+ * comments. Reddit has no adapter.
  */
 const ADAPTERS: readonly {
   prefix: string;
@@ -21,7 +21,7 @@ const ADAPTERS: readonly {
   { prefix: "arxiv:", idPattern: /^\d{4}\.\d{4,5}$/, fetchDiscussion: fetchHuggingFaceDiscussion },
 ];
 
-/** `null` se la chiave non è di una fonte con commenti o ha un id malformato. */
+/** `null` if the key is not from a source with comments or has a malformed id. */
 export function discussionFetcherFor(
   key: string,
 ): (() => Promise<Discussion>) | null {

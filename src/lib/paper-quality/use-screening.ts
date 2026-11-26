@@ -26,8 +26,8 @@ export function useScreening(keys: string[], categories: readonly string[], enab
       setError(null);
       const scope = `${selection}|${freshness}`;
       const requested = signature.split(",");
-      // Solo il lotto richiesto dalla pagina. Un aumento del limite riusa anche
-      // la richiesta già partita, invece di interromperla e rimandare gli stessi PDF.
+      // Only the batch the page asked for. Raising the limit also reuses the
+      // request already started, instead of aborting it and resending the same PDFs.
       try {
         if (inFlight.current?.scope === scope) await inFlight.current.promise;
         for (let index = 0; index < requested.length && live; index += 2) {
@@ -42,8 +42,8 @@ export function useScreening(keys: string[], categories: readonly string[], enab
             const body = await response.json() as { papers?: PaperQuality[]; error?: string };
             if (!response.ok || !Array.isArray(body.papers)) throw new Error(body.error ?? "Scrematura non disponibile.");
             for (const paper of body.papers) completed.current.set(paper.key, scope);
-            // Il lotto già ricevuto dal server può terminare anche a scrematura spenta.
-            // Conservane i risultati senza avviare altri PDF fuori dalla pagina.
+            // A batch already received from the server may finish even with screening off.
+            // Keep its results without starting other PDFs outside the page.
             setPapers((current) => {
               const next = new Map(current);
               for (const paper of body.papers!) {

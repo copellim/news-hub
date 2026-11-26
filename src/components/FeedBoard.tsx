@@ -56,10 +56,10 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 /**
- * Il periodo ha senso solo sulle News: i paper di HF e arXiv escono una volta
- * al giorno e "ultime 24 ore" lascerebbe la corsia quasi vuota. Settimana e
- * mese non ci sono perché le fonti danno solo la front page attuale, che non
- * va oltre due o tre giorni.
+ * The period makes sense only on News: HF and arXiv papers come out once a
+ * day and "ultime 24 ore" (last 24 hours) would leave the lane almost empty.
+ * Week and month are not there because the sources give only the current
+ * front page, which does not go beyond two or three days.
  */
 const LANE_HAS_PERIOD: Record<LaneId, boolean> = {
   news: true,
@@ -67,8 +67,8 @@ const LANE_HAS_PERIOD: Record<LaneId, boolean> = {
 };
 
 /**
- * Sui paper i commenti sono pochi e arXiv non ne ha: "Più discussi" darebbe
- * una classifica di zeri.
+ * On papers comments are few and arXiv has none: "Più discussi" (most
+ * discussed) would give a ranking of zeros.
  */
 const LANE_SORT_MODES: Record<LaneId, readonly SortMode[]> = {
   news: ["ranked", "discussed", "recent"],
@@ -76,24 +76,24 @@ const LANE_SORT_MODES: Record<LaneId, readonly SortMode[]> = {
 };
 
 /**
- * Dopo un tentativo che ha restituito ancora dati vecchi (la fonte non
- * risponde, o la cache non ha finito di rigenerarsi) non si riprova a ogni
- * tick: si aspetta qualche minuto.
+ * After an attempt that still returned old data (the source does not
+ * respond, or the cache has not finished regenerating) it does not retry on
+ * every tick: it waits a few minutes.
  */
 const FRESHNESS_COOLDOWN_MS = 2 * 60_000;
 
 /**
- * Le cache sono stale-while-revalidate: la prima richiesta dopo una pausa
- * riceve la copia vecchia e fa partire la rigenerazione, una richiesta di
- * pochi secondi dopo trova quella nuova (verificato su Vercel: STALE, poi HIT
- * con age 3). Quindi se la risposta è ancora vecchia si riprova, poche volte.
+ * The caches are stale-while-revalidate: the first request after a pause
+ * receives the old copy and starts the regeneration, a request a few
+ * seconds later finds the new one (verified on Vercel: STALE, then HIT
+ * with age 3). So if the response is still old it retries, a few times.
  */
 const STALE_RETRIES = 2;
 const STALE_RETRY_DELAY_MS = 4_000;
 
 /**
- * La corsia più lo scarto fra l'orologio del server e quello del client, da
- * sommare all'ora locale quando si misura l'età dei dati.
+ * The lane plus the offset between the server clock and the client one, to
+ * add to the local time when measuring the age of the data.
  */
 async function loadFreshLane(
   laneId: LaneId,
@@ -136,29 +136,29 @@ export function FeedBoard({
   const [loaded, setLoaded] = useState<Lane | null>(null);
   const [isBusy, startWork] = useTransition();
 
-  // Il filtro compare dove serve davvero: nella corsia che contiene arXiv.
+  // The filter appears where it is really needed: in the lane that contains arXiv.
   const hasCategoryFilter = LANE_SOURCES[laneId].includes("arxiv");
 
-  // Il render del server usa sempre le categorie di default: non sa chi è
-  // l'utente. Questa è la selezione con cui i dati mostrati sono stati
-  // costruiti, e serve a capire quando vanno ricaricati.
+  // The server render always uses the default categories: it does not know
+  // who the user is. This is the selection the displayed data was built
+  // with, and it serves to tell when they must be reloaded.
   const [loadedSelection, setLoadedSelection] = useState(() =>
     selectionKeyOf(DEFAULT_ARXIV_CATEGORIES),
   );
   const selectionKey = selectionKeyOf(categories);
 
-  // Scarta le risposte arrivate fuori ordine: cliccando più chip di fila, la
-  // prima richiesta può tornare dopo l'ultima e rimettere dati vecchi.
+  // Discards responses that arrive out of order: clicking several chips in a
+  // row, the first request can come back after the last and put old data back.
   const latestRequest = useRef(0);
 
-  // Una volta caricato dal client comanda quel risultato, non la prop: il
-  // render del server non conosce le categorie scelte qui.
+  // Once loaded from the client that result rules, not the prop: the
+  // server render does not know the categories chosen here.
   const activeLane = loaded ?? lane;
 
-  // La pagina arriva dalla cache e può essere vecchia di ore: se lo è, si
-  // richiede la corsia. `now` resta null fino al montaggio e scatta anche al
-  // ritorno sulla scheda. Lo scarto d'orologio è noto dopo la prima risposta
-  // del server; prima si assume zero.
+  // The page comes from the cache and can be hours old: if it is, the lane
+  // is requested again. `now` stays null until mount and also ticks on
+  // returning to the tab. The clock offset is known after the first server
+  // response; before that it is assumed to be zero.
   const now = useNow();
   const [clockOffset, setClockOffset] = useState(0);
   const isStale = now !== null && isLaneStale(activeLane, now + clockOffset);
@@ -197,12 +197,13 @@ export function FeedBoard({
     selectionKey,
   ]);
 
-  // Ordina, poi filtra per letto/non letto, poi taglia: così ogni fonte
-  // contribuisce i suoi migliori N *fra quelli che restano visibili*, invece di
-  // sprecare le sue N posizioni su articoli che il filtro sta per nascondere.
-  // Il periodo viene prima di tutto: "i più votati delle ultime 24 ore" si
-  // classificano fra loro, non contro quelli di ieri. L'ora entra nel calcolo
-  // solo se serve, così la lista non si ricalcola a ogni minuto per niente.
+  // Sort, then filter by read/unread, then cut: this way each source
+  // contributes its best N *among those that stay visible*, instead of
+  // wasting its N positions on articles the filter is about to hide.
+  // The period comes before everything: "the most voted of the last 24 hours"
+  // are ranked against each other, not against yesterday's. The time enters
+  // the computation only when needed, so the list is not recomputed every
+  // minute for nothing.
   const periodNow = period === "day" ? now : null;
   const periodItems = useMemo(
     () =>
@@ -212,7 +213,7 @@ export function FeedBoard({
     [activeLane, periodNow],
   );
 
-  // Il pool di analisi è più ampio della pagina e resta fisso durante i verdetti.
+  // The analysis pool is larger than the page and stays fixed during the verdicts.
   const candidateItems = useMemo(() => {
     const eligible = filterByRead(sortItems(periodItems, sortMode), readFilter, visitedKeys);
     return laneId === "papers" ? takePerSource(eligible, candidateLimit(perSource)) : eligible;
@@ -256,9 +257,9 @@ export function FeedBoard({
     [periodItems],
   );
 
-  // Solo i paper visibili: riassumere quelli tagliati dalla pagina costerebbe
-  // senza che nessuno li legga. I riassunti sono riservati a chi ha fatto
-  // l'accesso, sia per leggerli sia per generarli.
+  // Only the visible papers: summarising those cut from the page would cost
+  // money without anyone reading them. Summaries are reserved for signed-in
+  // users, both for reading and for generating them.
   const paperKeys = useMemo(
     () =>
       laneId === "papers" ? visible.items.map((item) => item.key) : [],
@@ -287,8 +288,8 @@ export function FeedBoard({
           aria-label="Ordinamento"
           className="-ml-2.5 flex w-[calc(100%+0.625rem)] gap-1 border-b border-rule sm:w-auto sm:border-0"
         >
-          {/* Tab primarie di M3: etichetta e indicatore nel colore primario,
-              indicatore di 3 px arrotondato in alto. */}
+          {/* M3 primary tabs: label and indicator in the primary colour,
+              3 px indicator rounded at the top. */}
           {LANE_SORT_MODES[laneId].map((mode) => (
             <button
               key={mode}
@@ -418,8 +419,8 @@ function PeriodPicker({
   period: Period;
   onChange: (period: Period) => void;
 }) {
-  // Pulsante segmentato di M3: contorno pieno arrotondato, il segmento scelto
-  // in secondaryContainer con il segno di spunta davanti all'etichetta.
+  // M3 segmented button: full rounded outline, the chosen segment in
+  // secondaryContainer with the check mark in front of the label.
   return (
     <div
       role="group"
@@ -467,8 +468,8 @@ function CheckIcon() {
 }
 
 /**
- * Interruttore di M3: binario di 52×32, da spento contornato con la maniglia
- * piccola, da acceso pieno nel colore primario con la maniglia grande.
+ * M3 switch: 52×32 track, outlined with the small handle when off, filled
+ * in the primary colour with the large handle when on.
  */
 function UnreadOnlySwitch({
   label = "Solo non letti",

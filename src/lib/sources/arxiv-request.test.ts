@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { fetchText } from "./http";
 vi.mock("./http", () => ({ fetchText: vi.fn() }));
-it("serializza le richieste arXiv e rispetta 3 secondi tra avvii anche dopo un errore", async () => {
+it("serialises arXiv requests and keeps 3 seconds between starts even after an error", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-11-03T00:00:00Z'));
   try {

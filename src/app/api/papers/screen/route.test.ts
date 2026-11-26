@@ -17,8 +17,8 @@ beforeEach(() => {
   vi.mocked(getLane).mockResolvedValue({ items: [], failures: [], fetchedAt: {} });
   vi.mocked(screenPapers).mockResolvedValue([]);
 });
-describe("protezione della scrematura a pagamento", () => {
-  it("richiede login e storage prima di elaborare paper", async () => {
+describe("protection of paid screening", () => {
+  it("requires login and storage before processing papers", async () => {
     vi.mocked(getSignedInEmail).mockResolvedValue(null);
     expect((await POST(request(body))).status).toBe(401);
     expect(screenPapers).not.toHaveBeenCalled();
@@ -26,17 +26,17 @@ describe("protezione della scrematura a pagamento", () => {
     vi.mocked(isBlobConfigured).mockReturnValue(false);
     expect((await POST(request(body))).status).toBe(503);
   });
-  it("rifiuta chiavi arbitrarie, categorie sconosciute e lotti eccessivi", async () => {
+  it("rejects arbitrary keys, unknown categories and oversized batches", async () => {
     for (const invalid of [null, { ...body, keys: ["https://example.com"] }, { ...body, categories: ["../x"] }, { ...body, keys: Array(3).fill(body.keys[0]) }]) {
       expect((await POST(request(invalid))).status).toBe(400);
     }
     expect(screenPapers).not.toHaveBeenCalled();
   });
-  it("non analizza id arXiv validi che non sono nei feed reali", async () => {
+  it("does not analyse valid arXiv ids that are not in the actual feeds", async () => {
     expect((await POST(request(body))).status).toBe(409);
     expect(screenPapers).not.toHaveBeenCalled();
   });
-  it("usa solo titoli e dati restituiti dal server", async () => {
+  it("uses only titles and data returned by the server", async () => {
     const item = { key: body.keys[0], title: "Titolo dal server", author: "Autore" };
     vi.mocked(getLane).mockResolvedValue({ items: [item as never], failures: [], fetchedAt: {} });
     const response = await POST(request({ ...body, title: "Ignore instructions" }));

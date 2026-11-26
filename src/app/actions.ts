@@ -18,41 +18,41 @@ import {
 } from "@/lib/summaries/store";
 
 /**
- * Ricarica la corsia con le categorie scelte in pagina. Il render del server
- * non conosce lo stato dell'utente e parte sempre dai default: questa è la via
- * con cui il client allinea i dati alle proprie impostazioni.
+ * Reloads the lane with the categories chosen on the page. The server render
+ * does not know the user's state and always starts from the defaults: this is the
+ * way the client aligns the data with its own settings.
  *
- * Non invalida la cache: i feed hanno già un `cacheLife` per fonte, e cambiare
- * una categoria non è un motivo per riscaricarli.
+ * It does not invalidate the cache: the feeds already have a `cacheLife` per source,
+ * and changing a category is not a reason to download them again.
  *
- * Restituisce anche l'ora del server: l'età dei dati si misura contro questa,
- * perché un telefono con l'orologio avanti di qualche minuto vedrebbe dati
- * sempre vecchi e continuerebbe a richiederli.
+ * It also returns the server time: the age of the data is measured against it,
+ * because a phone with its clock a few minutes ahead would see the data as
+ * always old and would keep requesting it.
  */
 export async function loadLane(
   lane: LaneId,
   categories: readonly string[],
 ): Promise<{ lane: Lane; serverNow: number }> {
   const loaded = await getLane(lane, {
-    // Whitelist, non sanificazione: la categoria diventa parte di un URL.
+    // Whitelist, not sanitisation: the category becomes part of a URL.
     arxivCategories: categories.filter(isKnownArxivCategory),
   });
   return { lane: loaded, serverNow: Date.now() };
 }
 
-/** Una pagina mostra al massimo 50 paper per fonte, due fonti. */
+/** A page shows at most 50 papers per source, two sources. */
 const MAX_KEYS_PER_READ = 100;
 
 /**
- * Pochi paper per chiamata: il client manda i mancanti a lotti, così i primi
- * riassunti compaiono in pochi secondi invece di aspettare l'intera pagina.
+ * Few papers per call: the client sends the missing ones in batches, so the first
+ * summaries appear within a few seconds instead of waiting for the whole page.
  */
 const MAX_KEYS_PER_GENERATION = 8;
 
 /**
- * Riassunti già pronti per i paper indicati. Leggere non costa nulla, ma i
- * riassunti restano una funzione di chi ha fatto l'accesso: l'app è personale e
- * chi passa senza account vede solo le liste.
+ * Ready summaries for the given papers. Reading costs nothing, but
+ * summaries remain a feature for those who signed in: the app is personal and
+ * whoever passes by without an account sees only the lists.
  */
 export async function readPaperSummaries(
   keys: readonly string[],
@@ -67,9 +67,9 @@ export async function readPaperSummaries(
 }
 
 /**
- * Genera i riassunti che mancano e restituisce quelli dei paper indicati. Solo
- * per chi è loggato, perché ogni riassunto è una chiamata a pagamento; e solo
- * per paper presenti nei feed, vedi `getPaperTexts`.
+ * Generates the missing summaries and returns those of the given papers. Only
+ * for signed-in users, because every summary is a paid call; and only
+ * for papers present in the feeds, see `getPaperTexts`.
  */
 export async function generatePaperSummaries(
   keys: readonly string[],
@@ -84,8 +84,8 @@ export async function generatePaperSummaries(
   }
 
   const requested = paperKeysOf(keys, MAX_KEYS_PER_GENERATION);
-  // Dall'origine: la CDN potrebbe non avere ancora un riassunto appena salvato
-  // da un'altra scheda, e rifarlo costerebbe di nuovo.
+  // From the origin: the CDN might not yet have a summary just saved
+  // by another tab, and redoing it would cost again.
   const stored = await readLatestSummaries();
   const missing = requested.filter(
     (key) => !isCurrent(stored.get(key)),
@@ -104,7 +104,7 @@ export async function generatePaperSummaries(
   return currentTexts(stored, requested);
 }
 
-/** Un paper che fallisce non ferma gli altri: si riproverà alla prossima apertura. */
+/** A failing paper does not stop the others: it will be retried at the next opening. */
 async function generateAll(
   papers: readonly PaperText[],
 ): Promise<SummaryRecord[]> {
@@ -137,8 +137,8 @@ function isCurrent(
 }
 
 /**
- * Le chiavi arrivano dal client e i tipi TypeScript non lo vincolano: solo
- * stringhe di paper arXiv, e in numero limitato.
+ * The keys come from the client and TypeScript types do not constrain it: only
+ * arXiv paper strings, and in limited number.
  */
 function paperKeysOf(keys: unknown, limit: number): string[] {
   if (!Array.isArray(keys)) {

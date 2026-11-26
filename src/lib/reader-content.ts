@@ -15,9 +15,9 @@ export type ReaderLoad<T> =
   | { status: "error"; message: string };
 
 /**
- * Una richiesta per parte e chiave per tutta la visita: riaprire la stessa
- * card non rifà la rete. Si conserva la promessa, così due aperture ravvicinate
- * condividono la stessa richiesta. Un errore esce dalla cache e si può riprovare.
+ * One request per part and key for the whole visit: reopening the same
+ * card does not hit the network again. The promise is kept, so two close openings
+ * share the same request. An error leaves the cache and can be retried.
  */
 const requests = new Map<string, Promise<unknown>>();
 
@@ -29,7 +29,7 @@ export function useReaderDiscussion(key: string | null) {
   return useReaderPart<Discussion>("discussion", key);
 }
 
-/** `key` null: la parte non serve (una self-post non ha articolo), niente rete. */
+/** `key` null: the part is not needed (a self-post has no article), no network. */
 function useReaderPart<T>(part: ReaderPart, key: string | null) {
   const requestKey = key === null ? null : `${part}:${key}`;
   const [results, setResults] = useState<ReadonlyMap<string, ReaderLoad<T>>>(
@@ -88,8 +88,8 @@ export type DigestState =
   | { status: "error"; message: string };
 
 /**
- * Il riassunto del paper intero: all'apertura si guarda se qualcuno l'ha già
- * generato; altrimenti resta un pulsante, perché ogni generazione si paga.
+ * The whole-paper summary: on opening it checks whether someone has already
+ * generated it; otherwise a button remains, because every generation is paid for.
  */
 export function usePaperDigest(key: string) {
   const [state, setState] = useState<DigestState>({ status: "checking" });
@@ -104,7 +104,7 @@ export function usePaperDigest(key: string) {
       },
       (error: unknown) => {
         if (isCurrent) {
-          // Senza sapere se c'è, il pulsante resta: al peggio rilegge quello salvato.
+          // Without knowing whether it exists, the button stays: at worst it rereads the saved one.
           console.error("Riassunto del paper non letto", error);
           setState({ status: "missing" });
         }

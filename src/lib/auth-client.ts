@@ -2,5 +2,5 @@
 
 import { createAuthClient } from "better-auth/react";
 
-/** Stessa origine dell'app: Better Auth risponde sotto `/api/auth`. */
+/** Same origin as the app: Better Auth answers under `/api/auth`. */
 export const authClient = createAuthClient();

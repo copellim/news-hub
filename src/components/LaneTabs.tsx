@@ -15,11 +15,11 @@ const SECTION_ICONS: Record<SectionId, ReactNode> = {
 };
 
 /**
- * Navigazione di Material 3, la stessa in due posizioni: sotto `sm` è la
- * navigation bar fissa a fondo schermo, dove il pollice ci arriva; da `sm` in
- * su è la navigation rail a sinistra. Stesse voci, stessa pillola
- * secondaryContainer dietro l'icona attiva, stesso livello di stato e stessa
- * onda alla pressione.
+ * Material 3 navigation, the same in two positions: below `sm` it is the
+ * navigation bar fixed at the bottom of the screen, where the thumb reaches;
+ * from `sm` up it is the navigation rail on the left. Same items, same
+ * secondaryContainer pill behind the active icon, same state layer and same
+ * ripple on press.
  */
 export function LaneTabs() {
   const pathname = usePathname();
@@ -56,9 +56,9 @@ export function LaneTabs() {
 }
 
 /**
- * La pillola è anche il bersaglio del livello di stato e il contenitore
- * dell'onda: su M3 la pressione si vede lì, non sull'intera cella. Il focus da
- * tastiera la contorna, al posto del contorno della cella.
+ * The pill is also the target of the state layer and the container of the
+ * ripple: in M3 the press shows there, not on the whole cell. Keyboard focus
+ * outlines it, instead of outlining the cell.
  */
 function TabIndicator({
   isActive,

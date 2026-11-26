@@ -11,12 +11,12 @@ import {
   type SettingsOperation,
 } from "@/lib/settings-model";
 
-/** Un file JSON per utente: è piccolo (~100 KB) e si legge sempre intero. */
+/** One JSON file per user: it is small (~100 KB) and always read whole. */
 const SETTINGS_CONTENT_TYPE = "application/json";
 
 /**
- * Lettura dall'origine e non dalla CDN: dopo un salvataggio da un altro
- * dispositivo la cache servirebbe per un minuto la versione precedente.
+ * Read from the origin and not from the CDN: after a save from another
+ * device the cache would serve the previous version for a minute.
  */
 export async function readUserSettings(email: string): Promise<Settings> {
   return parseStoredSettings(await readLatestBlobText(settingsPathOf(email)));
@@ -36,8 +36,8 @@ export async function updateUserSettings(
 }
 
 /**
- * Hash e non l'email in chiaro: il percorso diventa parte di un URL, e
- * un'email può contenere caratteri che non ci stanno bene.
+ * Hash and not the plain email: the path becomes part of a URL, and
+ * an email can contain characters that do not fit well there.
  */
 function settingsPathOf(email: string): string {
   const digest = createHash("sha256").update(email).digest("hex");
@@ -45,9 +45,9 @@ function settingsPathOf(email: string): string {
 }
 
 /**
- * Un file assente è un utente nuovo; un file illeggibile invece è un errore:
- * trattarlo come vuoto farebbe sì che il salvataggio successivo cancelli
- * segnalibri e letti.
+ * A missing file is a new user; an unreadable file instead is an error:
+ * treating it as empty would make the next save delete
+ * bookmarks and read items.
  */
 function parseStoredSettings(text: string | null): Settings {
   if (text === null) {

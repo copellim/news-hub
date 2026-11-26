@@ -9,16 +9,16 @@ import { cleanHtml } from "../sanitize";
 import { unavailableArticle, type Extractor } from "./extractor";
 
 /**
- * Sotto questa lunghezza Readability non ha trovato un articolo ma i resti di
- * un'app: nel campione verificato le pagine-app davano da 28 a 463 caratteri,
- * gli articoli veri almeno 850.
+ * Below this length Readability has not found an article but the remains of
+ * an app: in the verified sample the app pages gave 28 to 463 characters,
+ * real articles at least 850.
  */
 const MIN_ARTICLE_CHARS = 500;
 
 /**
- * Readability, lo stesso motore della vista lettura di Firefox, su qualsiasi
- * sito. Sul campione di HN e Lobsters ha estratto 41 articoli su 49, GitHub
- * compreso; gli altri ricadono su "apri sul sito" con la descrizione og.
+ * Readability, the same engine as Firefox's reader view, on any
+ * site. On the HN and Lobsters sample it extracted 41 articles out of 49, GitHub
+ * included; the others fall back to "apri sul sito" (open on the site) with the og description.
  */
 export const genericExtractor: Extractor = {
   id: "generic",
@@ -40,10 +40,10 @@ export function articleFromHtml(
   sourceUrl: string,
   baseUrl: string,
 ): ReaderArticle {
-  // linkedom implementa il DOM che Readability usa, ma i suoi tipi non sono
-  // quelli di lib.dom: la conversione passa da `unknown`.
+  // linkedom implements the DOM that Readability uses, but its types are not
+  // those of lib.dom: the conversion goes through `unknown`.
   const { document } = parseHTML(html) as unknown as { document: Document };
-  // Prima di Readability, che modifica il documento mentre lo analizza.
+  // Before Readability, which modifies the document while parsing it.
   const description = metaContent(document, "og:description", "description");
   const siteName = metaContent(document, "og:site_name");
 
@@ -70,7 +70,7 @@ export function articleFromHtml(
   };
 }
 
-/** Su qualche pagina Readability va in errore (jank-lang.org): vale come "niente articolo". */
+/** On some pages Readability throws (jank-lang.org): it counts as "no article". */
 function parseWithReadability(document: Document) {
   try {
     return new Readability(document).parse();

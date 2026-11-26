@@ -3,9 +3,10 @@
 import { ARXIV_CATEGORY_CATALOG } from "@/lib/config";
 
 /**
- * Selezione delle categorie arXiv da leggere. Cinquanta voci sono troppe per
- * stare sempre aperte: il blocco è richiudibile e da chiuso riassume la scelta.
- * Il cambio ricarica la lista da solo, senza passare da "Aggiorna".
+ * Selection of the arXiv categories to read. Fifty entries are too many to
+ * stay always open: the block is collapsible and when closed summarises the
+ * choice. A change reloads the list by itself, without going through
+ * "Aggiorna" (refresh).
  */
 export function ArxivCategoryFilter({
   selected,
@@ -41,8 +42,8 @@ export function ArxivCategoryFilter({
                     disabled={disabled}
                     onClick={() => onToggle(category.id)}
                     aria-pressed={isSelected}
-                    // Filter chip di M3: contornato da spento, in
-                    // secondaryContainer con la spunta da acceso.
+                    // M3 filter chip: outlined when off, in
+                    // secondaryContainer with the check mark when on.
                     className={`state-layer flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] disabled:opacity-50 ${
                       isSelected
                         ? "border-transparent bg-chip font-semibold text-chip-ink"

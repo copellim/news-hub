@@ -7,15 +7,15 @@ import { fetchPage } from "@/lib/sources/http";
 import { cleanHtml } from "../sanitize";
 import type { Extractor } from "./extractor";
 
-/** Id nuovi (`2610.28027v2`) e vecchi (`hep-th/9901001`). */
+/** New (`2610.28027v2`) and old (`hep-th/9901001`) ids. */
 const ARXIV_ID_PATTERN =
   /^\/(?:abs|html|pdf)\/((?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?)/;
 
 /**
- * Di un paper la card mostra l'abstract e rimanda al testo intero: leggere un
- * paper di quaranta pagine in una card non è lettura rapida. Basta la pagina
- * `abs`, che dice anche se arXiv ha la versione HTML (non tutti i paper ce
- * l'hanno: 17 su 20 in un campione di cs.LG); senza, il rimando è al PDF.
+ * For a paper the card shows the abstract and links to the full text: reading a
+ * forty-page paper in a card is not quick reading. The `abs` page is
+ * enough, and it also says whether arXiv has the HTML version (not all papers
+ * have it: 17 out of 20 in a cs.LG sample); without it, the link is to the PDF.
  */
 export const arxivExtractor: Extractor = {
   id: "arxiv",
@@ -69,7 +69,7 @@ export function paperFromAbstractPage(
   };
 }
 
-/** arXiv apre titolo, autori e abstract con un'etichetta ("Abstract:") che qui non serve. */
+/** arXiv opens title, authors and abstract with a label ("Abstract:") that is not needed here. */
 function withoutDescriptor(element: Element | null): Element | null {
   element?.querySelector(".descriptor")?.remove();
   return element;

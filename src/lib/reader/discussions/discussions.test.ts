@@ -10,14 +10,14 @@ import { huggingFaceDiscussion, type HuggingFaceComment } from "./huggingface";
 import { discussionFetcherFor } from "./index";
 import { lobstersDiscussion, type LobstersStoryWithComments } from "./lobsters";
 
-// Fixture ridotte da risposte reali del 2026-10-23.
+// Fixtures trimmed from real responses of 2026-10-23.
 
 describe("hackerNewsDiscussion", () => {
   const story = algoliaStory as AlgoliaItem;
 
-  it("ordina il primo livello come HN, con chi manca da Firebase in fondo", () => {
+  it("orders the first level like HN, with those missing from Firebase at the bottom", () => {
     const discussion = hackerNewsDiscussion(story, firebase.kids);
-    // Algolia li dà in ordine di id: 50195081, 50195217, 50195818, 50195923.
+    // Algolia gives them in id order: 50195081, 50195217, 50195818, 50195923.
     expect(discussion.comments.map((comment) => comment.id)).toEqual([
       "50195923",
       "50195217",
@@ -26,7 +26,7 @@ describe("hackerNewsDiscussion", () => {
     ]);
   });
 
-  it("senza Firebase tiene l'ordine di Algolia", () => {
+  it("without Firebase keeps Algolia's order", () => {
     const discussion = hackerNewsDiscussion(story, []);
     expect(discussion.comments.map((comment) => comment.id)).toEqual([
       "50195081",
@@ -36,7 +36,7 @@ describe("hackerNewsDiscussion", () => {
     ]);
   });
 
-  it("tiene l'albero, decodifica le entità e non inventa punteggi", () => {
+  it("keeps the tree, decodes entities and does not invent scores", () => {
     const discussion = hackerNewsDiscussion(story, firebase.kids);
     expect(countComments(discussion.comments)).toBe(10);
     const first = discussion.comments.find((comment) => comment.id === "50195081");
@@ -45,7 +45,7 @@ describe("hackerNewsDiscussion", () => {
     expect(discussion.postHtml).toBeNull();
   });
 
-  it("un commento senza testo vale come cancellato e tiene le risposte", () => {
+  it("a comment without text counts as deleted and keeps its replies", () => {
     const deleted = {
       ...story,
       children: [{ ...story.children[1], text: null, author: null }],
@@ -59,7 +59,7 @@ describe("hackerNewsDiscussion", () => {
 describe("lobstersDiscussion", () => {
   const story = lobstersStory as LobstersStoryWithComments;
 
-  it("ricostruisce l'albero da parent_comment nell'ordine del sito", () => {
+  it("rebuilds the tree from parent_comment in the site's order", () => {
     const discussion = lobstersDiscussion(story);
     expect(discussion.comments.map((comment) => comment.id)).toEqual([
       "uqh4lj",
@@ -76,7 +76,7 @@ describe("lobstersDiscussion", () => {
     expect(discussion.postHtml).toContain("<p>");
   });
 
-  it("un commento moderato perde testo e autore ma non le risposte", () => {
+  it("a moderated comment loses text and author but not its replies", () => {
     const moderated = {
       ...story,
       comments: story.comments.map((comment) =>
@@ -91,7 +91,7 @@ describe("lobstersDiscussion", () => {
 });
 
 describe("huggingFaceDiscussion", () => {
-  it("porta le risposte sotto il commento", () => {
+  it("puts the replies under the comment", () => {
     const discussion = huggingFaceDiscussion(
       "2610.28027",
       huggingFace.comments as HuggingFaceComment[],
@@ -105,7 +105,7 @@ describe("huggingFaceDiscussion", () => {
 });
 
 describe("discussionFetcherFor", () => {
-  it("accetta solo chiavi di fonti con commenti e id ben formati", () => {
+  it("accepts only keys of sources with comments and well-formed ids", () => {
     expect(discussionFetcherFor("hackernews:50195110")).not.toBeNull();
     expect(discussionFetcherFor("lobsters:nmurnh")).not.toBeNull();
     expect(discussionFetcherFor("arxiv:2610.28027")).not.toBeNull();

@@ -7,10 +7,11 @@ import type { FeedItem, SourceSnapshot } from "@/lib/feed";
 import { fetchJson, SourceError } from "./http";
 
 /**
- * Reddit anonimo non è utilizzabile da un server: `www.reddit.com/....json`
- * risponde 403 anche con user-agent custom, e il feed RSS passa a 429 già alla
- * seconda richiesta. L'unica via è un'app registrata + OAuth client_credentials.
- * Senza credenziali la corsia resta vuota invece di far fallire la pagina.
+ * Anonymous Reddit is not usable from a server: `www.reddit.com/....json`
+ * answers 403 even with a custom user-agent, and the RSS feed switches to 429
+ * already on the second request. The only way is a registered app + OAuth
+ * client_credentials. Without credentials the lane stays empty instead of
+ * failing the page.
  */
 const TOKEN_URL = "https://www.reddit.com/api/v1/access_token";
 const HOT_URL = `https://oauth.reddit.com/r/programming/hot?limit=${SOURCE_FETCH_LIMIT}&raw_json=1`;
@@ -61,8 +62,8 @@ export async function getRedditSnapshot(): Promise<SourceSnapshot> {
 }
 
 /**
- * Nessuna cache del token: questa funzione gira dentro `getRedditSnapshot`, già
- * cachata a minuti, quindi vale ~1 richiesta ogni 5 minuti — sotto ogni limite.
+ * No token cache: this function runs inside `getRedditSnapshot`, already
+ * cached for minutes, so it amounts to ~1 request every 5 minutes — below any limit.
  */
 async function requestAccessToken(): Promise<string> {
   const credentials = Buffer.from(
@@ -102,7 +103,7 @@ function toFeedItem(post: RedditListing["data"]["children"][number]["data"]): Fe
     key: `reddit:${post.id}`,
     source: "reddit",
     title: post.title,
-    // Nei self-post `url` punta già al permalink: nessun articolo esterno dietro.
+    // In self-posts `url` already points to the permalink: no external article behind it.
     url: post.is_self ? discussionUrl : post.url,
     discussionUrl,
     score: post.score,

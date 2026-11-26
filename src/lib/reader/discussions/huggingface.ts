@@ -11,13 +11,13 @@ export type HuggingFaceComment = {
   createdAt: string;
   author?: { name?: string } | null;
   data: { hidden?: boolean; latest?: { html?: string } };
-  /** Un solo livello: le risposte non hanno a loro volta risposte. */
+  /** A single level: replies do not have replies of their own. */
   replies?: HuggingFaceComment[];
 };
 
 /**
- * `field=comments` è documentato nello spec OpenAPI di HF
- * (`/.well-known/openapi.json`) e accetta un solo valore per richiesta.
+ * `field=comments` is documented in HF's OpenAPI spec
+ * (`/.well-known/openapi.json`) and accepts a single value per request.
  */
 export async function fetchHuggingFaceDiscussion(id: string): Promise<Discussion> {
   const paper = await fetchJson<{ comments?: HuggingFaceComment[] }>(

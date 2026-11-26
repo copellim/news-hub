@@ -7,12 +7,12 @@ import {
 import { readUserSettings, updateUserSettings } from "@/lib/user-settings";
 
 /**
- * Stato dell'utente loggato. È una route e non una Server Action perché il
- * client salva anche alla chiusura della scheda, con `fetch(..., { keepalive })`.
- * L'utente viene sempre dalla sessione, mai dal corpo della richiesta.
+ * State of the signed-in user. It is a route and not a Server Action because the
+ * client also saves when the tab closes, with `fetch(..., { keepalive })`.
+ * The user always comes from the session, never from the request body.
  */
 
-/** Il recupero dal localStorage è la richiesta più grossa: ~100 KB in pratica. */
+/** The recovery from localStorage is the biggest request: ~100 KB in practice. */
 const MAX_BODY_BYTES = 1_000_000;
 
 export async function GET(): Promise<Response> {
@@ -46,7 +46,7 @@ export async function POST(request: Request): Promise<Response> {
   return Response.json(await updateUserSettings(email, operations));
 }
 
-/** Tutto o niente: un'operazione malformata rifiuta l'intero lotto. */
+/** All or nothing: a malformed operation rejects the whole batch. */
 function parseOperations(body: string): SettingsOperation[] | null {
   let parsed: unknown;
   try {

@@ -2,9 +2,9 @@ import { getSignedInEmail } from "@/lib/auth";
 import { getArticle } from "@/lib/reader";
 
 /**
- * L'articolo di un item per la card di lettura. Route GET e non Server Action:
- * le Server Action di una pagina girano una alla volta, e sulla corsia Papers
- * la card aspetterebbe dietro i lotti dei riassunti.
+ * The article of an item for the reading card. A GET route and not a Server Action:
+ * a page's Server Actions run one at a time, and on the Papers lane
+ * the card would wait behind the summary batches.
  */
 export async function GET(request: Request): Promise<Response> {
   const email = await getSignedInEmail();

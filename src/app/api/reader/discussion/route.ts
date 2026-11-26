@@ -1,7 +1,7 @@
 import { getSignedInEmail } from "@/lib/auth";
 import { getDiscussion } from "@/lib/reader";
 
-/** I commenti di un item per la card di lettura; route GET per lo stesso motivo dell'articolo. */
+/** The comments of an item for the reading card; a GET route for the same reason as the article. */
 export async function GET(request: Request): Promise<Response> {
   const email = await getSignedInEmail();
   if (!email) {

@@ -1,2 +1,2 @@
-// Vuoto di proposito: sostituisce `server-only` nei test, vedi vitest.config.mts.
+// Empty on purpose: replaces `server-only` in tests, see vitest.config.mts.
 export {};

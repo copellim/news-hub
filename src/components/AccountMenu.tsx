@@ -3,14 +3,14 @@
 import { authClient } from "@/lib/auth-client";
 import { clearSettings, useSettingsStatus } from "@/lib/settings";
 
-/** Pulsante di testo di M3: niente contorno, livello di stato a pillola. */
+/** M3 text button: no outline, pill-shaped state layer. */
 const BUTTON_CLASS =
   "state-layer -mr-3 h-10 rounded-full px-3 text-sm font-medium text-accent";
 
 /**
- * Accesso con Google. Le liste di news e paper si vedono anche senza;
- * segnalibri, letti, riassunti e lettura diretta richiedono un account in
- * allowlist.
+ * Sign-in with Google. The news and paper lists are visible without it;
+ * bookmarks, read items, summaries and direct reading require an account in
+ * the allowlist.
  */
 export function AccountMenu() {
   const { data: session, isPending } = authClient.useSession();
@@ -27,7 +27,7 @@ export function AccountMenu() {
         onClick={() =>
           void authClient.signIn.social({
             provider: "google",
-            // Dopo il login si torna alla pagina da cui si è partiti.
+            // After sign-in the user goes back to the page they started from.
             callbackURL: window.location.pathname,
           })
         }

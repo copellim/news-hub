@@ -1,4 +1,4 @@
-/** Le sezioni dell'app e la loro palette. Client-safe. */
+/** The app's sections and their palette. Client-safe. */
 
 export type SectionId = "news" | "papers" | "queue";
 
@@ -13,9 +13,9 @@ export function sectionOfPath(pathname: string): SectionId {
 }
 
 /**
- * Colore della barra del browser su mobile: il `surface` della sezione, lo
- * stesso di `[data-section]` in globals.css. Sta qui perché `viewport` vuole
- * valori letterali e non variabili CSS.
+ * Colour of the browser bar on mobile: the section's `surface`, the
+ * same as `[data-section]` in globals.css. It lives here because `viewport` wants
+ * literal values and not CSS variables.
  */
 const SECTION_THEME_COLORS: Record<SectionId, { light: string; dark: string }> =
   {

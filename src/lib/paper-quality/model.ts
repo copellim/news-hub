@@ -1,11 +1,11 @@
 import { interleaveSources, type FeedItem } from "@/lib/feed";
 
-/** Evidenze bibliografiche e valutazione del testo sono separate intenzionalmente. */
+/** Bibliographic evidence and assessment of the text are kept separate on purpose. */
 export type Evidence = { label: string; url: string; detail: string };
 export type MethodCheck = {
   criterion: "claims" | "validation" | "reproducibility" | "limitations";
   outcome: "supported" | "limitation" | "fatal" | "unknown" | "na" | "weak";
-  /** Obbligatorio per un difetto sostanziale: perché compromette il risultato principale. */
+  /** Required for a substantive flaw: why it compromises the main result. */
   impact?: string;
   reference: string;
   detail: string;
@@ -60,7 +60,7 @@ export function verdictOf(paper: PaperQuality): { verdict: Verdict; reason: stri
   return { verdict: "review", reason: "Contributo da valutare alla luce dei limiti documentati; nessun difetto sostanziale rilevato." };
 }
 
-/** Round robin per fonte: i primi due paper di un lotto provengono da HF e arXiv, quando disponibili. */
+/** Round robin per source: the first two papers of a batch come from HF and arXiv, when available. */
 export function screeningOrder(items: readonly FeedItem[]): string[] {
   const queues = new Map<string, string[]>();
   const seen = new Set<string>();
@@ -79,7 +79,7 @@ export function screeningOrder(items: readonly FeedItem[]): string[] {
   return ordered;
 }
 
-/** Preserva l'ordine scelto dentro ogni fascia e tiene visibili anche analisi mancanti o fallite. */
+/** Preserves the chosen order within each tier and keeps missing or failed analyses visible too. */
 export function groupScreenedPapers(items: readonly FeedItem[], papers: ReadonlyMap<string, PaperQuality>, balanced = false) {
   const groups: Record<Verdict, FeedItem[]> = { recommended: [], review: [], excluded: [] };
   const pending: FeedItem[] = [];
@@ -89,7 +89,7 @@ export function groupScreenedPapers(items: readonly FeedItem[], papers: Readonly
     else groups[verdictOf(paper).verdict].push(item);
   }
   groups.review.push(...pending);
-  // Alternare prima della partizione non basta: gli scarti possono ricreare blocchi di una sola fonte.
+  // Alternating before partitioning is not enough: exclusions can recreate runs from a single source.
   if (balanced) {
     groups.recommended = interleaveSources(groups.recommended);
     groups.review = interleaveSources(groups.review);
@@ -136,7 +136,7 @@ export function normalizedTitle(title: string): string {
   return title.normalize("NFKD").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
-/** Solo URL web: nessun link restituito dalle fonti o dall'AI diventa codice. */
+/** Web URLs only: no link returned by the sources or the AI becomes code. */
 export function safeEvidenceUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   try { const url = new URL(value); return url.protocol === "https:" ? url.href : null; } catch { return null; }

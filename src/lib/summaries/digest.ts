@@ -8,7 +8,7 @@ import {
 } from "./digest-store";
 import { DIGEST_PROMPT_VERSION, digestPaper } from "./generate";
 
-/** Il riassunto salvato, se è stato scritto con il prompt attuale. */
+/** The saved summary, if it was written with the current prompt. */
 export async function findPaperDigest(
   arxivId: string,
 ): Promise<PaperDigest | null> {
@@ -17,8 +17,8 @@ export async function findPaperDigest(
 }
 
 /**
- * Lo genera e lo salva, a meno che nel frattempo non ci sia già: due schede, o
- * un doppio click, non lo pagano due volte.
+ * Generates and saves it, unless it already exists by then: two tabs, or
+ * a double click, do not pay for it twice.
  */
 export async function createPaperDigest(arxivId: string): Promise<PaperDigest> {
   const stored = await findPaperDigest(arxivId);

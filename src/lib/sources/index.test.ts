@@ -15,26 +15,26 @@ beforeEach(() => {
   vi.mocked(getArxivSnapshot).mockResolvedValue({ items: [paper], fetchedAt });
   vi.mocked(getHuggingFaceSnapshot).mockResolvedValue({ items: [{ ...paper, source: "huggingface", score: 10 }], fetchedAt });
 });
-describe("conteggio del feed originale", () => {
-  it("distingue duplicati assegnati a HF da un feed arXiv vuoto", async () => {
+describe("count of the original feed", () => {
+  it("tells duplicates assigned to HF apart from an empty arXiv feed", async () => {
     const lane = await getLane("papers");
     expect(lane.items).toHaveLength(1);
     expect(lane.items[0].source).toBe("huggingface");
     expect(lane.sourceItemCounts).toEqual({ huggingface: 1, arxiv: 1 });
   });
-  it("segnala zero annunci soltanto quando la fonte ha risposto vuota", async () => {
+  it("reports zero announcements only when the source answered empty", async () => {
     vi.mocked(getArxivSnapshot).mockResolvedValue({ items: [], fetchedAt });
     const lane = await getLane("papers");
     expect(lane.sourceItemCounts?.arxiv).toBe(0);
     expect(lane.failures).toEqual([]);
   });
-  it("non confonde una fonte guasta con zero annunci", async () => {
+  it("does not confuse a broken source with zero announcements", async () => {
     vi.mocked(getArxivSnapshot).mockRejectedValue(new Error("HTTP 503"));
     const lane = await getLane("papers");
     expect(lane.sourceItemCounts?.arxiv).toBeUndefined();
     expect(lane.failures[0].source).toBe("arxiv");
   });
-  it("conserva almeno 20 per canale anche con 50 duplicati HF/arXiv", async () => {
+  it("keeps at least 20 per channel even with 50 HF/arXiv duplicates", async () => {
     const candidates = Array.from({ length: 100 }, (_, i) => ({ ...paper, key: `arxiv:2611.${String(i + 1).padStart(5, "0")}` }));
     vi.mocked(getArxivSnapshot).mockResolvedValue({ items: candidates, fetchedAt });
     vi.mocked(getHuggingFaceSnapshot).mockResolvedValue({ items: candidates.slice(0, 50).map((item) => ({ ...item, source: "huggingface", score: 10 })), fetchedAt });
@@ -44,12 +44,12 @@ describe("conteggio del feed originale", () => {
     expect(new Set(lane.items.map((item) => item.key)).size).toBe(100);
     expect(lane.notices).toEqual([]);
   });
-  it("non riscarica abstract arXiv per paper già disponibili da HF", async () => {
+  it("does not redownload arXiv abstracts for papers already available from HF", async () => {
     vi.mocked(getHuggingFaceTexts).mockResolvedValue(new Map([[paper.key, { title: paper.title, abstract: "Abstract HF", aiSummary: "Summary" }]]));
     expect((await getPaperTexts([paper.key], ["cs.AI"]))[0].abstract).toBe("Abstract HF");
     expect(getArxivTexts).not.toHaveBeenCalled();
   });
-  it("idrata da arXiv soltanto le chiavi mancanti da HF", async () => {
+  it("hydrates from arXiv only the keys missing from HF", async () => {
     vi.mocked(getHuggingFaceTexts).mockResolvedValue(new Map([[paper.key, { title: paper.title, abstract: "HF", aiSummary: null }]]));
     const other = "arxiv:2611.00002";
     vi.mocked(getArxivTexts).mockResolvedValue(new Map([[other, { title: "Other", abstract: "arXiv" }]]));

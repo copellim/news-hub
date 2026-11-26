@@ -5,9 +5,9 @@ import type { Extractor } from "./extractor";
 import { genericExtractor } from "./generic";
 
 /**
- * Vince il primo che riconosce l'URL. Un sito che merita un trattamento suo
- * (LessWrong, YouTube, i PDF) è un file in questa cartella e una riga qui,
- * prima del generico, che riconosce tutto.
+ * The first one that recognises the URL wins. A site that deserves its own
+ * handling (LessWrong, YouTube, PDFs) is a file in this folder and a line here,
+ * before the generic one, which recognises everything.
  */
 const EXTRACTORS: readonly Extractor[] = [arxivExtractor, genericExtractor];
 

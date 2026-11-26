@@ -1,18 +1,18 @@
 /**
- * Filtro arXiv hardcoded (opzione "a"): i feed di categoria valgono ~350 item al
- * giorno l'uno, illeggibili senza selezione. Si cambia qui, non c'è UI né stato
- * per utente — è la scelta che tiene il progetto interamente statico.
+ * Hardcoded arXiv filter (option "a"): the category feeds carry ~350 items a
+ * day each, unreadable without a selection. It is changed here, there is no UI
+ * or per-user state — it is the choice that keeps the project fully static.
  */
 
 /**
- * Tassonomia arXiv per gli archivi che interessano questo aggregatore:
- * Computer Science, Statistics e Electrical Engineering (50 categorie,
- * da <https://arxiv.org/category_taxonomy>). Aggiungere math/physics significa
- * aggiungere righe qui, niente altro.
+ * arXiv taxonomy for the archives this aggregator is interested in:
+ * Computer Science, Statistics and Electrical Engineering (50 categories,
+ * from <https://arxiv.org/category_taxonomy>). Adding math/physics means
+ * adding rows here, nothing else.
  *
- * È anche la whitelist: la categoria arriva dal client e finisce in un URL
- * (`https://rss.arxiv.org/rss/<id>`), quindi nessun id fuori da questo elenco
- * può essere richiesto.
+ * It is also the whitelist: the category comes from the client and ends up in a URL
+ * (`https://rss.arxiv.org/rss/<id>`), so no id outside this list
+ * can be requested.
  */
 export const ARXIV_CATEGORY_CATALOG: readonly {
   id: string;
@@ -74,7 +74,7 @@ export const ARXIV_CATEGORY_CATALOG: readonly {
   { id: "eess.SY", label: "Systems and Control", archive: "Electrical Engineering and Systems Science" },
 ];
 
-/** Le categorie dove esce la ricerca AI: il punto di partenza al primo avvio. */
+/** The categories where AI research comes out: the starting point on first launch. */
 export const DEFAULT_ARXIV_CATEGORIES: readonly string[] = [
   "cs.AI",
   "cs.LG",
@@ -87,27 +87,27 @@ export function isKnownArxivCategory(id: string): boolean {
 
 
 /**
- * Quota finale per fonte dopo la deduplicazione. La selezione in pagina
- * taglia questa lista senza rifare richieste. arXiv recupera prima un margine
- * maggiore (ARXIV_CANDIDATE_LIMIT), per conservare la quota dopo i duplicati HF.
+ * Final quota per source after deduplication. The selection on the page
+ * cuts this list without repeating requests. arXiv first retrieves a larger
+ * margin (ARXIV_CANDIDATE_LIMIT), to keep its quota after the HF duplicates.
  */
 export const SOURCE_FETCH_LIMIT = 50;
 
-/** Minimo di candidati distinti da recuperare per ciascun canale paper, se disponibili. */
+/** Minimum distinct candidates to retrieve for each paper channel, if available. */
 export const MIN_PAPERS_PER_SOURCE = 20;
 
-/** Margine per conservare la quota arXiv anche quando 50 candidati coincidono con HF. */
+/** Margin to keep the arXiv quota even when 50 candidates coincide with HF. */
 export const ARXIV_CANDIDATE_LIMIT = SOURCE_FETCH_LIMIT * 2;
 
-/** Scelte del selettore in pagina. Devono restare <= SOURCE_FETCH_LIMIT. */
+/** Choices of the selector on the page. They must stay <= SOURCE_FETCH_LIMIT. */
 export const ITEMS_PER_SOURCE_OPTIONS = [10, 20, 30, 50] as const;
 
 export const DEFAULT_ITEMS_PER_SOURCE = 20;
 export const DEFAULT_PAPERS_PER_SOURCE = 10;
 
 /**
- * arXiv chiede di identificarsi; Reddit e Lobsters rispondono peggio agli UA
- * anonimi. Reddit raccomanda il formato `piattaforma:app:versione (by /u/utente)`:
- * aggiungi il tuo username quando registri l'app.
+ * arXiv asks clients to identify themselves; Reddit and Lobsters respond worse to
+ * anonymous UAs. Reddit recommends the format `platform:app:version (by /u/user)`:
+ * add your username when you register the app.
  */
 export const USER_AGENT = "web:news-hub:0.1 (personal reader)";

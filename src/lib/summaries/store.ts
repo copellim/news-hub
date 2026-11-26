@@ -7,17 +7,17 @@ import {
 } from "@/lib/blob-store";
 
 /**
- * Tutti i riassunti in un solo JSONL su Blob, una riga per paper, comune a
- * tutti gli utenti. Blob non ha un append: ogni salvataggio riscrive il file,
- * per questo si salva una volta per lotto e non a ogni paper.
+ * All summaries in a single JSONL on Blob, one line per paper, shared by
+ * all users. Blob has no append: every save rewrites the file, which is
+ * why it is saved once per batch and not on every paper.
  */
 const SUMMARIES_PATH = "summaries.jsonl";
 const JSONL_CONTENT_TYPE = "application/x-ndjson";
 
 /**
- * Un paper più vecchio non torna più nei feed, quindi il suo riassunto non
- * serve: potare tiene il file intorno ai 2 MB invece di farlo crescere di
- * ~22 MB l'anno, e il file si scarica intero a ogni lettura.
+ * An older paper never comes back into the feeds, so its summary is not
+ * needed: pruning keeps the file around 2 MB instead of letting it grow by
+ * ~22 MB a year, and the file is downloaded whole on every read.
  */
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -28,19 +28,19 @@ export type SummaryRecord = {
   text: string;
   origin: SummaryOrigin;
   model: string;
-  /** Cambia quando cambia il prompt: le righe vecchie si rigenerano. */
+  /** Changes when the prompt changes: old lines are regenerated. */
   promptVersion: number;
   createdAt: string;
 };
 
-/** Per mostrare: dalla CDN, al massimo un minuto indietro. */
+/** For display: from the CDN, at most a minute behind. */
 export async function readCachedSummaries(): Promise<
   Map<string, SummaryRecord>
 > {
   return indexByKey(parseRecords(await readCachedBlobText(SUMMARIES_PATH)));
 }
 
-/** Prima di generare: dall'origine, per non rifare un riassunto appena salvato. */
+/** Before generating: from the origin, so a summary just saved is not redone. */
 export async function readLatestSummaries(): Promise<
   Map<string, SummaryRecord>
 > {
@@ -71,8 +71,8 @@ export async function saveSummaries(
 }
 
 /**
- * Una riga illeggibile si scarta da sola invece di rendere inutilizzabile
- * l'intero file: è il vantaggio di una riga per paper.
+ * An unreadable line is discarded on its own instead of making the whole
+ * file unusable: that is the advantage of one line per paper.
  */
 function parseRecords(text: string | null): SummaryRecord[] {
   if (!text) {

@@ -12,25 +12,25 @@ import {
 } from "@/lib/settings-model";
 
 /**
- * Stato dell'utente nel browser: una copia di quello che sta su Blob, più le
- * modifiche non ancora salvate. Ogni click aggiorna subito la pagina; le
- * modifiche partono insieme qualche secondo dopo l'ultima, perché ogni
- * salvataggio riscrive il file e il piano Hobby di Blob ha 2.000 scritture al
- * mese, oltre le quali lo store resta bloccato per 30 giorni.
+ * The user's state in the browser: a copy of what is on Blob, plus the
+ * changes not yet saved. Every click updates the page immediately; the
+ * changes leave together a few seconds after the last one, because every
+ * save rewrites the file and Blob's Hobby plan has 2,000 writes a
+ * month, beyond which the store stays blocked for 30 days.
  */
 
 const SETTINGS_ENDPOINT = "/api/settings";
 
-/** Attesa dopo l'ultima modifica prima di salvare: raccoglie i click di fila. */
+/** Wait after the last change before saving: gathers clicks in a row. */
 const FLUSH_DELAY_MS = 3_000;
 
-/** Dopo un salvataggio fallito si riprova con calma, senza martellare. */
+/** After a failed save it retries calmly, without hammering. */
 const RETRY_DELAY_MS = 15_000;
 
-/** Limite del browser per `fetch` con `keepalive`, con un po' di margine. */
+/** The browser's limit for `fetch` with `keepalive`, with some margin. */
 const MAX_KEEPALIVE_BYTES = 60_000;
 
-/** Chiave della versione che teneva tutto nel localStorage. */
+/** Key of the version that kept everything in localStorage. */
 const LEGACY_STORAGE_KEY = "news-hub:settings:v1";
 
 export type SettingsStatus = "loading" | "signedOut" | "ready" | "error";
@@ -40,20 +40,20 @@ type SettingsSnapshot = {
   settings: Settings;
 };
 
-/** Il server non sa chi è l'utente: renderizza come se lo stato stesse arrivando. */
+/** The server does not know who the user is: it renders as if the state were arriving. */
 const LOADING_SNAPSHOT: SettingsSnapshot = {
   status: "loading",
   settings: DEFAULT_SETTINGS,
 };
 
 /**
- * `useSyncExternalStore` confronta gli snapshot per identità: l'oggetto si
- * sostituisce solo quando qualcosa cambia davvero.
+ * `useSyncExternalStore` compares snapshots by identity: the object is
+ * replaced only when something actually changes.
  */
 let snapshot: SettingsSnapshot = LOADING_SNAPSHOT;
-/** Ultima versione confermata dal server. */
+/** Latest version confirmed by the server. */
 let confirmed: Settings = DEFAULT_SETTINGS;
-/** Modifiche già visibili in pagina ma non ancora salvate. */
+/** Changes already visible on the page but not yet saved. */
 let pending: SettingsOperation[] = [];
 let isFlushing = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -143,7 +143,7 @@ export function useArxivCategories() {
   return { categories: settings.arxivCategories, toggleCategory };
 }
 
-/** Dopo il logout lo stato dell'utente non deve restare in pagina. */
+/** After sign-out the user's state must not stay on the page. */
 export function clearSettings(): void {
   pending = [];
   confirmed = DEFAULT_SETTINGS;
@@ -176,9 +176,9 @@ function publish(next: SettingsSnapshot): void {
 }
 
 /**
- * Le modifiche fatte mentre lo stato sta ancora arrivando si tengono da parte
- * e si riapplicano sopra quello del server. Senza login si possono ancora
- * cambiare le categorie, ma solo per questa visita: non c'è dove salvarle.
+ * Changes made while the state is still arriving are kept aside
+ * and reapplied on top of the server's. Without sign-in the categories can
+ * still be changed, but only for this visit: there is nowhere to save them.
  */
 function enqueue(operation: SettingsOperation): void {
   const { status, settings } = snapshot;
@@ -200,8 +200,8 @@ function startLoading(): void {
     return;
   }
   hasStartedLoading = true;
-  // Nascondere la scheda è l'ultimo momento affidabile per salvare: dopo, il
-  // browser può chiuderla senza altri eventi.
+  // Hiding the tab is the last reliable moment to save: after that, the
+  // browser can close it without further events.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       void flush();
@@ -236,8 +236,8 @@ async function loadSettings(): Promise<void> {
 }
 
 /**
- * Recupero una tantum di quello che la versione precedente teneva nel
- * localStorage: si unisce all'account e poi si cancella, così non si ripete.
+ * One-off recovery of what the previous version kept in
+ * localStorage: it is merged into the account and then deleted, so it does not repeat.
  */
 async function importLegacyLocalSettings(remote: Settings): Promise<Settings> {
   const local = readLegacyLocalSettings();
@@ -257,7 +257,7 @@ function readLegacyLocalSettings(): Settings | null {
     const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
     return raw === null ? null : normalizeSettings(JSON.parse(raw));
   } catch {
-    // Storage negato o contenuto illeggibile: non c'è niente da recuperare.
+    // Storage denied or unreadable content: there is nothing to recover.
     return null;
   }
 }
@@ -286,13 +286,13 @@ async function flush(): Promise<void> {
   try {
     confirmed = await postOperations(batch, { keepalive: true });
     isFlushing = false;
-    // Le modifiche arrivate durante il salvataggio restano sopra la risposta.
+    // Changes that arrived during the save stay on top of the response.
     publish({ status: "ready", settings: applyOperations(confirmed, pending) });
     scheduleFlush(FLUSH_DELAY_MS);
   } catch (error) {
     isFlushing = false;
     if (error instanceof SessionExpiredError) {
-      // Riprovare non servirebbe: senza sessione il server rifiuta sempre.
+      // Retrying would be useless: without a session the server always refuses.
       clearSettings();
       return;
     }
@@ -311,8 +311,8 @@ async function postOperations(
     method: "POST",
     headers: { "content-type": "application/json" },
     body,
-    // Con `keepalive` la richiesta sopravvive alla chiusura della scheda, ma
-    // il browser rifiuta i corpi oltre 64 KB.
+    // With `keepalive` the request survives the closing of the tab, but
+    // the browser rejects bodies over 64 KB.
     keepalive: options.keepalive && body.length < MAX_KEEPALIVE_BYTES,
   });
   if (response.status === 401) {

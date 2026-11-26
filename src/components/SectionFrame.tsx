@@ -6,11 +6,11 @@ import type { ReactNode } from "react";
 import { sectionOfPath } from "@/lib/sections";
 
 /**
- * Applica la palette della sezione a tutta la pagina, header e navbar
- * compresi. Sta nel layout, una volta sola, e non nelle pagine: dopo una
- * navigazione Next tiene nel DOM la route precedente nascosta, e due
- * `data-section` vivi insieme si contenderebbero i colori. Il pathname è già
- * giusto nel render del server, quindi niente lampo di colore al caricamento.
+ * Applies the section's palette to the whole page, header and navbar
+ * included. It lives in the layout, only once, and not in the pages: after a
+ * navigation Next keeps the previous route hidden in the DOM, and two live
+ * `data-section` together would fight over the colours. The pathname is
+ * already right in the server render, so no colour flash on load.
  */
 export function SectionFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();

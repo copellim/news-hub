@@ -36,7 +36,7 @@ function toFeedItem(story: LobstersStory): FeedItem {
     key: `lobsters:${story.short_id}`,
     source: "lobsters",
     title: story.title,
-    // Le "ask"/"show" senza link esterno hanno url vuoto: cade sui commenti.
+    // "ask"/"show" posts without an external link have an empty url: fall back to the comments.
     url: story.url || story.comments_url,
     discussionUrl: story.comments_url,
     score: story.score,
@@ -47,7 +47,7 @@ function toFeedItem(story: LobstersStory): FeedItem {
   };
 }
 
-/** L'API ha cambiato forma nel tempo: stringa nelle versioni vecchie, oggetto ora. */
+/** The API has changed shape over time: a string in old versions, an object now. */
 function submitterName(submitter: LobstersStory["submitter_user"]): string {
   return typeof submitter === "string" ? submitter : submitter.username;
 }

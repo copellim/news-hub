@@ -2,7 +2,7 @@ import "server-only";
 
 import { USER_AGENT } from "@/lib/config";
 
-/** Ogni fonte fallisce da sola: l'errore dice chi e perché, senza risalire alla pagina. */
+/** Each source fails on its own: the error says who and why, without bubbling up to the page. */
 export class SourceError extends Error {
   constructor(source: string, detail: string) {
     super(`${source}: ${detail}`);
@@ -12,10 +12,10 @@ export class SourceError extends Error {
 
 const SOURCE_TIMEOUT_MS = 15_000;
 
-/** Una pagina d'articolo che non arriva in 10 s non vale l'attesa nella card. */
+/** An article page that does not arrive within 10 s is not worth the wait in the card. */
 const PAGE_TIMEOUT_MS = 10_000;
 
-/** Oltre questa dimensione non è un articolo: è un dump, un'app o un errore. */
+/** Beyond this size it is not an article: it is a dump, an app or an error. */
 const MAX_PAGE_BYTES = 5_000_000;
 
 async function fetchWithUserAgent(
@@ -55,12 +55,12 @@ export async function fetchText(
   return await response.text();
 }
 
-/** Una pagina web qualsiasi, con l'indirizzo a cui è arrivata dopo i redirect. */
+/** Any web page, with the address it ended up at after the redirects. */
 export type FetchedPage = {
-  /** Base per rendere assoluti i link relativi. */
+  /** Base for making relative links absolute. */
   finalUrl: string;
   contentType: string;
-  /** `null` quando la risposta non è HTML: un PDF, un'immagine, un video. */
+  /** `null` when the response is not HTML: a PDF, an image, a video. */
   html: string | null;
 };
 
@@ -87,7 +87,7 @@ export async function fetchPage(
   return { ...page, html: new TextDecoder().decode(bytes) };
 }
 
-/** Un file binario, es. il PDF di un paper, con un tetto sulla dimensione. */
+/** A binary file, e.g. a paper's PDF, with a cap on the size. */
 export async function fetchBytes(
   source: string,
   url: string,
@@ -97,7 +97,7 @@ export async function fetchBytes(
   return readLimitedBytes(source, response, maxBytes);
 }
 
-/** Legge il corpo a pezzi e si ferma al tetto, invece di scaricare tutto e poi scartarlo. */
+/** Reads the body in chunks and stops at the cap, instead of downloading everything and then discarding it. */
 async function readLimitedBytes(
   source: string,
   response: Response,

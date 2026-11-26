@@ -8,16 +8,16 @@ import type { PaperDigestRecord } from "./digest-store";
 import type { SummaryOrigin, SummaryRecord } from "./store";
 
 /**
- * Haiku basta: riscrivere un abstract in due frasi, o tradurne una, è un
- * compito facile, e costa ~$0,0001 a paper. Niente ragionamento esteso: per
- * una riscrittura non serve e i token di pensiero si pagano come output.
+ * Haiku is enough: rewriting an abstract in two sentences, or translating one,
+ * is an easy task, and costs ~$0.0001 per paper. No extended thinking: a
+ * rewrite does not need it and thinking tokens are billed as output.
  */
 const SUMMARY_MODEL = "claude-haiku-5-5";
 
-/** Alzarlo fa rigenerare tutti i riassunti al prossimo caricamento. */
+/** Raising it regenerates all summaries on the next load. */
 export const SUMMARY_PROMPT_VERSION = 1;
 
-/** Qualche frase in italiano: 1024 token lasciano molto margine. */
+/** A few sentences in Italian: 1024 tokens leave plenty of margin. */
 const MAX_OUTPUT_TOKENS = 1024;
 
 const SHARED_RULES = `Scrivi in italiano semplice, per un lettore tecnico che vuole capire in pochi secondi di cosa parla il paper.
@@ -33,20 +33,20 @@ const SUMMARIZE_PROMPT = `Ti vengono dati il titolo e l'abstract di un paper sci
 Riassumi in due o tre frasi di cosa tratta: il problema affrontato, l'idea proposta e il risultato principale.
 ${SHARED_RULES}`;
 
-/** Alzarlo fa sì che il prossimo "Riassumi" rigeneri invece di mostrare il vecchio. */
+/** Raising it makes the next "Riassumi" (summarise) regenerate instead of showing the old one. */
 export const DIGEST_PROMPT_VERSION = 1;
 
 /**
- * Il PDF passa in base64 e la richiesta ha un tetto di 32 MB: con l'aumento
- * del base64, 20 MB di PDF restano sotto. I paper di arXiv stanno quasi
- * sempre fra 1 e 10 MB.
+ * The PDF is sent in base64 and the request has a 32 MB cap: with the base64
+ * overhead, 20 MB of PDF stay below it. arXiv papers are almost always
+ * between 1 and 10 MB.
  */
 const MAX_PDF_BYTES = 20_000_000;
 
 /**
- * Il riassunto del paper intero è più lungo e più difficile di quello della
- * lista: ragionamento adattivo a sforzo medio invece che spento. Resta Haiku:
- * un paper di 30 pagine sono ~75.000 token, meno di un centesimo.
+ * The whole-paper summary is longer and harder than the list one: adaptive
+ * thinking at medium effort instead of off. It stays Haiku: a 30-page paper
+ * is ~75,000 tokens, less than a cent.
  */
 const DIGEST_MAX_OUTPUT_TOKENS = 16_000;
 
@@ -67,9 +67,9 @@ export function isSummarizerConfigured(): boolean {
 }
 
 /**
- * Per HF si traduce il riassunto che HF fornisce già; per gli altri, o se HF
- * non l'ha, si riassume l'abstract. `null` se non c'è niente da cui partire o
- * se il modello non ha prodotto un testo completo.
+ * For HF the summary HF already provides is translated; for the others, or if
+ * HF has none, the abstract is summarised. `null` if there is nothing to start
+ * from or if the model did not produce a complete text.
  */
 export async function summarizePaper(
   paper: PaperText,
@@ -89,7 +89,7 @@ export async function summarizePaper(
     messages: [{ role: "user", content: request.content }],
   });
 
-  // Un rifiuto o un testo tagliato non vanno salvati: resterebbero per 30 giorni.
+  // A refusal or a truncated text must not be saved: it would stay for 30 days.
   if (response.stop_reason !== "end_turn") {
     console.warn(
       `Riassunto di ${paper.key} scartato: stop_reason ${response.stop_reason}`,
@@ -115,10 +115,10 @@ export async function summarizePaper(
 }
 
 /**
- * Riassume il paper intero dal suo PDF, che contiene anche figure e tabelle.
- * Il PDF lo scarica il server e lo passa in base64, invece di dare l'URL al
- * modello: un errore di arXiv resta visibile qui, con il suo HTTP.
- * Lancia se il modello rifiuta o si interrompe: un testo tagliato non si salva.
+ * Summarises the whole paper from its PDF, which also contains figures and tables.
+ * The server downloads the PDF and passes it in base64, instead of giving the URL
+ * to the model: an arXiv error stays visible here, with its HTTP status.
+ * Throws if the model refuses or stops early: a truncated text is not saved.
  */
 export async function digestPaper(
   arxivId: string,

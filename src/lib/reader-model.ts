@@ -1,6 +1,6 @@
 /**
- * Modello della lettura diretta, uguale per ogni sito. Client-safe: nessuna
- * dipendenza `node:*`, lo usano sia le route sia la card.
+ * Model of direct reading, the same for every site. Client-safe: no
+ * `node:*` dependency, used by both the routes and the card.
  */
 
 import type { FeedItem, SourceId } from "@/lib/feed";
@@ -8,8 +8,8 @@ import type { FeedItem, SourceId } from "@/lib/feed";
 export type ExtractorId = "arxiv" | "generic";
 
 /**
- * L'articolo pronto da leggere, oppure il motivo per cui qui non si può:
- * una pagina che è un'app, un PDF, un sito che non risponde.
+ * The article ready to read, or the reason why it cannot be read here:
+ * a page that is an app, a PDF, a site that does not respond.
  */
 export type ReaderArticle =
   | {
@@ -18,11 +18,11 @@ export type ReaderArticle =
       byline: string | null;
       siteName: string | null;
       publishedAt: string | null;
-      /** HTML già ripulito sul server, con link e immagini assoluti. */
+      /** HTML already cleaned on the server, with absolute links and images. */
       html: string;
       sourceUrl: string;
       extractor: ExtractorId;
-      /** Solo per i paper: la card mostra l'abstract e rimanda al testo intero. */
+      /** Papers only: the card shows the abstract and links to the full text. */
       paper: PaperLinks | null;
     }
   | {
@@ -33,14 +33,14 @@ export type ReaderArticle =
     };
 
 export type PaperLinks = {
-  /** Chiave dell'item (`arxiv:<id>`): serve per il riassunto del paper intero. */
+  /** The item's key (`arxiv:<id>`): needed for the whole-paper summary. */
   key: string;
-  /** La versione HTML di arXiv quando c'è, altrimenti il PDF. */
+  /** arXiv's HTML version when there is one, otherwise the PDF. */
   fullTextUrl: string;
   fullTextFormat: "html" | "pdf";
 };
 
-/** Il riassunto del paper intero, generato a richiesta e salvato per tutti. */
+/** The whole-paper summary, generated on request and saved for everyone. */
 export type PaperDigest = {
   text: string;
   model: string;
@@ -51,9 +51,9 @@ export type Comment = {
   id: string;
   author: string | null;
   createdAt: string;
-  /** HTML ripulito; `null` per un commento cancellato, che tiene le risposte. */
+  /** Cleaned HTML; `null` for a deleted comment, which keeps its replies. */
   html: string | null;
-  /** Assente è `null`, come nei `FeedItem`: HN non espone i voti dei commenti. */
+  /** Missing is `null`, as in `FeedItem`: HN does not expose comment votes. */
   score: number | null;
   replies: Comment[];
 };
@@ -61,14 +61,14 @@ export type Comment = {
 export type Discussion = {
   source: SourceId;
   url: string;
-  /** Il testo del post quando non c'è un link esterno (Ask HN, self-post). */
+  /** The post's text when there is no external link (Ask HN, self-post). */
   postHtml: string | null;
   comments: Comment[];
 };
 
 export type ReaderPart = "article" | "discussion";
 
-/** Le fonti con un adapter per i commenti; le altre mostrano solo l'articolo. */
+/** The sources with a comments adapter; the others show only the article. */
 const DISCUSSION_SOURCES: ReadonlySet<SourceId> = new Set([
   "hackernews",
   "lobsters",
@@ -79,7 +79,7 @@ export function hasReadableDiscussion(item: FeedItem): boolean {
   return DISCUSSION_SOURCES.has(item.source) && item.discussionUrl !== null;
 }
 
-/** Ask HN e i post Lobsters senza link: il contenuto è la discussione stessa. */
+/** Ask HN and Lobsters posts without a link: the content is the discussion itself. */
 export function isSelfPost(item: FeedItem): boolean {
   return item.discussionUrl !== null && item.url === item.discussionUrl;
 }

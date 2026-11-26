@@ -7,10 +7,10 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { SECTIONS, sectionOfPath } from "@/lib/sections";
 
 /**
- * Top app bar piccola di Material 3: una riga con il nome della sezione, fissa
- * in cima. Il titolo resta discreto perché la sezione la dice già la
- * navigazione; quando la pagina scorre la barra passa al tono del contenitore
- * e si stacca dal contenuto.
+ * Material 3 small top app bar: one row with the section name, fixed at the
+ * top. The title stays discreet because the navigation already says the
+ * section; when the page scrolls the bar switches to the container tone
+ * and detaches from the content.
  */
 export function AppBar() {
   const pathname = usePathname();
@@ -40,7 +40,7 @@ function subscribeToScroll(onChange: () => void): () => void {
   return () => window.removeEventListener("scroll", onChange);
 }
 
-/** Sul server la pagina è sempre in cima. */
+/** On the server the page is always at the top. */
 function useIsScrolled(): boolean {
   return useSyncExternalStore(
     subscribeToScroll,

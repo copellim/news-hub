@@ -7,9 +7,9 @@ import { useNow } from "@/lib/now";
 import { countComments, type Comment, type Discussion } from "@/lib/reader-model";
 
 /**
- * Oltre questa profondità il rientro smette di crescere: su un telefono un
- * thread di HN profondo 10 lascerebbe al testo una colonna di poche parole.
- * Da `sm` lo spazio c'è e il limite sale.
+ * Beyond this depth the indentation stops growing: on a phone an HN thread
+ * 10 levels deep would leave the text a column of a few words.
+ * From `sm` there is room and the limit goes up.
  */
 const MOBILE_INDENT_LEVELS = 4;
 const DESKTOP_INDENT_LEVELS = 8;
@@ -100,7 +100,7 @@ function CommentNode({
   );
 }
 
-/** Rientro e filo verticale fino al limite; oltre, le risposte si allineano al genitore. */
+/** Indentation and vertical thread up to the limit; beyond it, replies align with the parent. */
 function indentClassOf(depth: number): string {
   if (depth <= MOBILE_INDENT_LEVELS) {
     return "ml-1 border-l-2 border-rule pl-3 sm:pl-4";

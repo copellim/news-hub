@@ -52,7 +52,7 @@ function MarkAsReadButton({
       type="button"
       onClick={() => onMarkAsRead(item.key)}
       aria-label={`Segna come letto: ${item.title}`}
-      // Pulsante tonale di M3: secondaryContainer, a pillola.
+      // M3 tonal button: secondaryContainer, pill-shaped.
       className="state-layer h-10 shrink-0 rounded-full bg-chip px-4 text-sm font-semibold text-chip-ink"
     >
       Letto

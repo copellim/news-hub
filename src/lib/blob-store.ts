@@ -3,16 +3,16 @@ import "server-only";
 import { BlobPreconditionFailedError, get, put } from "@vercel/blob";
 
 /**
- * Accesso ai file di testo su Vercel Blob (store privato). Blob non ha un
- * append: ogni modifica rilegge il file e lo riscrive intero, e la scrittura è
- * condizionata all'ETag letto, così due richieste concorrenti non si
- * cancellano a vicenda.
+ * Access to text files on Vercel Blob (private store). Blob has no append:
+ * every change rereads the file and rewrites it whole, and the write is
+ * conditional on the ETag that was read, so two concurrent requests do not
+ * erase each other.
  *
- * Su Vercel l'autenticazione passa da OIDC (`BLOB_STORE_ID` + token iniettato);
- * in locale servono `BLOB_STORE_ID` e `VERCEL_OIDC_TOKEN` da `vercel env pull`.
+ * On Vercel authentication goes through OIDC (`BLOB_STORE_ID` + injected token);
+ * locally `BLOB_STORE_ID` and `VERCEL_OIDC_TOKEN` from `vercel env pull` are needed.
  */
 
-/** Oltre questo numero di conflitti di fila qualcosa non va: meglio fallire. */
+/** Beyond this many conflicts in a row something is wrong: better to fail. */
 const MAX_WRITE_ATTEMPTS = 4;
 
 type BlobText = { text: string; etag: string };
@@ -24,9 +24,9 @@ export function isBlobConfigured(): boolean {
 }
 
 /**
- * Lettura dalla CDN: veloce e gratuita quando il file è in cache. Dopo una
- * sovrascrittura può restituire la versione precedente per circa un minuto,
- * quindi va bene solo per mostrare dati, non per riscriverli.
+ * Read from the CDN: fast and free when the file is cached. After an
+ * overwrite it can return the previous version for about a minute,
+ * so it is fine only for showing data, not for rewriting it.
  */
 export async function readCachedBlobText(
   pathname: string,
@@ -41,13 +41,13 @@ export async function readLatestBlobText(
 }
 
 /**
- * Riscrive il file con quello che restituisce `transform`, partendo sempre
- * dalla versione più recente. Se nel frattempo qualcun altro ha scritto, il
- * `put` fallisce sull'ETag e si riparte da capo con il contenuto nuovo.
+ * Rewrites the file with what `transform` returns, always starting from the
+ * most recent version. If someone else has written in the meantime, the
+ * `put` fails on the ETag and it starts over with the new content.
  *
- * Il primo salvataggio, a file ancora assente, non ha un ETag da confrontare:
- * due prime scritture simultanee possono sovrascriversi. Succede una volta per
- * file e il danno è un riassunto o un click da rifare.
+ * The first save, while the file is still missing, has no ETag to compare:
+ * two simultaneous first writes can overwrite each other. It happens once per
+ * file and the damage is a summary or a click to redo.
  */
 export async function updateBlobText(
   pathname: string,
@@ -58,7 +58,7 @@ export async function updateBlobText(
     const current = await readBlob(pathname, { useCache: false });
     const next = transform(current?.text ?? null);
     if (current && next === current.text) {
-      // Niente da scrivere: ogni `put` consuma la quota mensile di Blob.
+      // Nothing to write: every `put` uses up Blob's monthly quota.
       return next;
     }
     try {
@@ -81,10 +81,10 @@ export async function updateBlobText(
 }
 
 /**
- * La lettura dall'origine è quella che precede una scrittura, quindi il suo
- * ETag deve essere quello forte. Se la risposta arriva compressa (brotli, per
- * un JSONL di qualche KB) l'ETag diventa debole, `W/"…"`, e `put` con `ifMatch`
- * lo rifiuta sempre come "ETag mismatch": senza compressione resta forte.
+ * The read from the origin is the one that precedes a write, so its ETag
+ * must be the strong one. If the response arrives compressed (brotli, for
+ * a JSONL of a few KB) the ETag becomes weak, `W/"…"`, and `put` with `ifMatch`
+ * always rejects it as "ETag mismatch": without compression it stays strong.
  */
 async function readBlob(
   pathname: string,

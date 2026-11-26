@@ -3,8 +3,8 @@ import "server-only";
 import sanitize, { type IOptions } from "sanitize-html";
 
 /**
- * Tag di MathML: le pagine tecniche scrivono così le formule, e i browser le
- * disegnano da soli. `annotation` contiene il sorgente TeX, che resta nascosto.
+ * MathML tags: technical pages write formulas this way, and browsers render
+ * them on their own. `annotation` contains the TeX source, which stays hidden.
  */
 const MATHML_TAGS = [
   "math",
@@ -52,7 +52,7 @@ const OPTIONS: IOptions = {
     ...MATHML_TAGS,
   ],
   allowedAttributes: {
-    // `id` tiene vivi i rimandi interni, come le note a piè di pagina.
+    // `id` keeps internal references alive, such as footnotes.
     "*": ["id"],
     a: ["href", "title", "target", "rel"],
     img: ["src", "alt", "title", "width", "height", "loading", "referrerpolicy"],
@@ -75,12 +75,12 @@ const OPTIONS: IOptions = {
 };
 
 /**
- * L'unico passaggio per l'HTML che arriva da fuori, articoli e commenti: tiene
- * testo, codice, tabelle, figure e formule, toglie script, stili ed eventi.
+ * The only pass for HTML coming from outside, articles and comments: it keeps
+ * text, code, tables, figures and formulas, and removes scripts, styles and events.
  *
- * I link relativi diventano assoluti rispetto a `baseUrl`, l'indirizzo finale
- * della pagina: nella card sarebbero relativi a news-hub. linkedom non lo fa
- * da sé (verificato su GitHub: `src="/NVIDIA/OpenShell/raw/..."`).
+ * Relative links become absolute against `baseUrl`, the page's final
+ * address: in the card they would be relative to news-hub. linkedom does not do
+ * it by itself (verified on GitHub: `src="/NVIDIA/OpenShell/raw/..."`).
  */
 export function cleanHtml(html: string, baseUrl: string): string {
   return sanitize(html, {
@@ -103,7 +103,7 @@ function linkAttributes(
   baseUrl: string,
 ): sanitize.Attributes {
   const { href, title } = attribs;
-  // I rimandi interni (`#fn:1`) restano nella card.
+  // Internal references (`#fn:1`) stay in the card.
   if (href?.startsWith("#")) {
     return { href, ...(title ? { title } : {}) };
   }
@@ -122,7 +122,7 @@ function imageAttributes(
 ): sanitize.Attributes {
   const { src, alt, title, width, height } = attribs;
   const absolute = src?.startsWith("data:") ? src : absoluteUrl(src, baseUrl);
-  // `srcset` resta fuori: andrebbe riscritto URL per URL, e `src` basta.
+  // `srcset` stays out: it would have to be rewritten URL by URL, and `src` is enough.
   return {
     ...definedOnly({ alt, title, width, height }),
     ...(absolute ? { src: absolute } : {}),
