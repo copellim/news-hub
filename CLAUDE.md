@@ -73,10 +73,14 @@ src/lib/paper-summaries.ts  # client: usePaperSummaries
 src/lib/reader-model.ts     # client-safe: ReaderArticle, Discussion, Comment
 src/lib/reader/             # server: estrattori, adapter dei commenti, sanitizer, whitelist
 src/lib/reader-content.ts   # client: useReaderArticle, useReaderDiscussion
+src/lib/paper-quality/      # misto: scrematura dei paper (metadati, valutazione del PDF, artefatti, cache su Blob), useScreening
+src/lib/paper-interest/     # misto: affinità dei paper con i preferiti via Jev, useInterest
 src/app/actions.ts          # Server Action: loadLane, riassunti
 src/app/api/auth/[...all]/  # route di Better Auth
 src/app/api/settings/       # GET/POST dello stato dell'utente loggato
 src/app/api/reader/         # GET articolo e GET commenti per la card
+src/app/api/papers/screen/  # POST: scrematura di al massimo due paper presenti nel feed
+src/app/api/papers/interest/ # POST: punteggi di affinità dei candidati con i preferiti salvati
 src/app/page.tsx            # corsia News
 src/app/papers/page.tsx     # corsia Papers
 src/app/da-leggere/page.tsx # coda di lettura
@@ -86,6 +90,15 @@ Confine server/client: `sources/`, `summaries/`, `reader/`, `auth.ts`,
 `blob-store.ts` e `user-settings.ts` sono `server-only`. I tipi e le costanti che
 servono anche ai componenti stanno in `feed.ts`, `config.ts`, `settings-model.ts`
 e `reader-model.ts`, che non importano nulla di `node:*`.
+
+`paper-quality/` e `paper-interest/` non sono `server-only` per intero: sono
+cartelle miste. Hanno `import "server-only"` `assess.ts`, `artifacts.ts`,
+`metadata.ts`, `screen.ts`, `store.ts` e `jev.ts`; fuori dalle due cartelle li
+importano solo le route `api/papers/screen` e `api/papers/interest`. I due `model.ts` sono client-safe
+(nessuna direttiva, importano solo `feed.ts` e `config.ts`) e li usano sia le
+route sia `FeedBoard`, `FeedList` e `PaperQualityDetails`. `use-screening.ts` e
+`use-interest.ts` sono `"use client"`, li importa `FeedBoard` e parlano con il
+server solo via `fetch` verso le due route.
 
 ## Variabili d'ambiente
 
