@@ -1,35 +1,35 @@
-# Taratura della scrematura metodologica v2
+# Calibration of the v2 methodological screening
 
-Confronto eseguito il 2 novembre 2026 su sei PDF pubblici già analizzati dalla
-versione 1. Il campione è stato scelto per coprire quattro esclusioni e due
-selezioni precedenti, includendo il caso in cui l'AI aveva scartato un lavoro
-perché non poteva aprire il codice. Non è un campione casuale né una stima
-statistica della precisione del filtro.
+Comparison run on 2 November 2026 on six public PDFs already analysed by
+version 1. The sample was chosen to cover four previous exclusions and two
+previous selections, including the case in which the AI had discarded a work
+because it could not open the code. It is neither a random sample nor a
+statistical estimate of the filter's precision.
 
-I PDF completi sono stati rivalutati con Haiku e il prompt v2. Il nuovo prompt
-non ha ricevuto il verdetto precedente. Non sono state fornite recensioni
-OpenReview aggiuntive e la cache di produzione non è stata sovrascritta durante
-il confronto. Sono stati poi controllati nel testo dei PDF i passaggi pertinenti
-alle motivazioni dei cambiamenti; questo controllo circoscritto non certifica
-la correttezza degli esperimenti o delle dimostrazioni.
+The full PDFs were reassessed with Haiku and the v2 prompt. The new prompt
+did not receive the previous verdict. No additional OpenReview reviews were
+supplied and the production cache was not overwritten during the comparison.
+The passages relevant to the reasons for the changes were then checked in the
+text of the PDFs; this limited check does not certify the correctness of the
+experiments or the proofs.
 
-| Paper | Prima | Dopo | Controllo dei passaggi rilevanti |
+| Paper | Before | After | Check of the relevant passages |
 |---|---|---|---|
-| [Bayesian Distribution System State Estimation with Flow Matching](https://arxiv.org/abs/2610.40728) | Escluso | Consigliato | Sez. III–V: metodo e configurazioni descritti, split temporale, tuning sulla validazione, confronto con baseline e bootstrap a blocchi. Il PDF indica due repository; la mancata apertura del codice da parte dell'AI non dimostra un difetto del metodo. |
-| [More Rules, Longer Lists?](https://arxiv.org/abs/2610.40758) | Escluso | Da valutare | Sez. 4, 6–8: costruzione e certificazione di 20 catene, dipendenza dal modello certificante e sensibilità degli aggiornamenti GEPA. Sono limiti di interpretazione e generalizzazione da leggere, non prova di inutilità. |
-| [Beyond Plausible Prediction](https://arxiv.org/abs/2610.40798) | Escluso | Da valutare | Sez. 3, 5–6 e appendici: quota sintetica del TEST esplicitata, controlli sugli split e limiti della valutazione offline; dipendenza da output storici di modelli chiusi. |
-| [Automatic Construction of Strong Simple Baselines](https://arxiv.org/abs/2610.40700) | Escluso | Da valutare | Sez. 3–6 e appendici: 36 task, confronto con risultati riportati anziché riesecuzioni a pari budget, limitazioni esplicite. L'evidenza resta pertinente al setup ma non autorizza generalizzazioni senza riserve. |
-| [rTaste](https://arxiv.org/abs/2610.40488) | Selezionato | Da valutare | Sez. 3, 6 e appendice B: sette seed paper, assenza di baseline umana, accordo tra auditor limitato su alcune etichette. Il nuovo giudizio conserva il paper rendendo esplicita l'incertezza. |
-| [The psychophysics of affect in large language models](https://arxiv.org/abs/2610.40985) | Selezionato | Da valutare | Methods e Discussion: condizioni comparative su due modelli focali, accesso OpenRouter senza snapshot fissi e temperatura effettiva non sempre osservabile. Limiti dichiarati, senza dimostrazione di un difetto sostanziale. |
+| [Bayesian Distribution System State Estimation with Flow Matching](https://arxiv.org/abs/2610.40728) | Excluded | Recommended | Sec. III–V: method and configurations described, temporal split, tuning on validation, comparison with baselines and block bootstrap. The PDF points to two repositories; the AI failing to open the code does not show a flaw in the method. |
+| [More Rules, Longer Lists?](https://arxiv.org/abs/2610.40758) | Excluded | To review | Sec. 4, 6–8: construction and certification of 20 chains, dependence on the certifying model and sensitivity of the GEPA updates. These are limits of interpretation and generalisation to be read, not proof of uselessness. |
+| [Beyond Plausible Prediction](https://arxiv.org/abs/2610.40798) | Excluded | To review | Sec. 3, 5–6 and appendices: synthetic share of the TEST made explicit, checks on the splits and limits of the offline evaluation; dependence on historical outputs of closed models. |
+| [Automatic Construction of Strong Simple Baselines](https://arxiv.org/abs/2610.40700) | Excluded | To review | Sec. 3–6 and appendices: 36 tasks, comparison with reported results rather than reruns at equal budget, explicit limitations. The evidence remains relevant to the setup but does not license unqualified generalisations. |
+| [rTaste](https://arxiv.org/abs/2610.40488) | Selected | To review | Sec. 3, 6 and appendix B: seven seed papers, no human baseline, limited agreement between auditors on some labels. The new verdict keeps the paper while making the uncertainty explicit. |
+| [The psychophysics of affect in large language models](https://arxiv.org/abs/2610.40985) | Selected | To review | Methods and Discussion: comparative conditions on two focal models, OpenRouter access without fixed snapshots and effective temperature not always observable. Declared limits, with no demonstration of a substantive flaw. |
 
-Esito del confronto: da quattro esclusioni e due selezioni a un consigliato e
-cinque da valutare. Tutti e sei rimangono accessibili. Nessun difetto sostanziale
-è stato identificato nel campione con i nuovi criteri; non avendo un insieme
-validato di paper difettosi, questo confronto non misura il tasso di falsi
-negativi delle esclusioni.
+Outcome of the comparison: from four exclusions and two selections to one
+recommended and five to review. All six remain accessible. No substantive flaw
+was identified in the sample with the new criteria; lacking a validated set of
+flawed papers, this comparison does not measure the false-negative rate of the
+exclusions.
 
-I test automatici coprono separatamente i casi di esclusione: ritrattazione e
-`fatal` corredato da riferimento ed effetto sulla conclusione centrale. Coprono
-anche dati mancanti, limiti, vecchi giudizi v1, influenza limitata della peer
-review, alternanza delle fonti e conteggi delle attese. Il criterio non viene
-calibrato per ottenere una quota prefissata di consigliati.
+The automated tests cover the exclusion cases separately: retraction and
+`fatal` backed by a reference and an effect on the central conclusion. They
+also cover missing data, limitations, old v1 verdicts, the limited influence of
+peer review, alternation of sources and pending counts. The criterion is not
+calibrated to obtain a predetermined share of recommended papers.

@@ -93,8 +93,8 @@ public GitHub, Hugging Face and Zenodo APIs. A retraction or a substantive flaw
 tied to a reference in the PDF excludes a paper; missing information or
 documented limitations leave it to review. The client screens two papers per
 request, and an assessment is reused for up to 30 days. The verdict rules,
-pool sizes, thresholds and cache lifetimes are documented, in Italian, in
-[docs/screening-e-soglie.md](docs/screening-e-soglie.md), and a calibration run
+pool sizes, thresholds and cache lifetimes are documented in
+[docs/screening-and-thresholds.md](docs/screening-and-thresholds.md), and a calibration run
 of the current prompt in
 [docs/paper-screening-calibration.md](docs/paper-screening-calibration.md).
 
@@ -113,8 +113,7 @@ src/lib/paper-quality/      paper screening: metadata, assessment, rules, storag
 src/lib/paper-interest/     optional affinity ranking against saved papers
 ```
 
-`CLAUDE.md` holds the detailed design notes and the decisions behind them (in
-Italian).
+`CLAUDE.md` holds the detailed design notes and the decisions behind them.
 
 ## Running locally
 
