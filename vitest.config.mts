@@ -6,8 +6,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      // `server-only` lancia fuori da un React Server Component: nei test il
-      // confine non esiste, e i moduli server si provano da Node.
+      // `server-only` throws outside a React Server Component: in the tests the
+      // boundary does not exist, and the server modules are tested from Node.
       "server-only": fileURLToPath(
         new URL("./src/test/server-only-stub.ts", import.meta.url),
       ),

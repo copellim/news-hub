@@ -32,7 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-# l'example non contiene segreti e documenta le variabili di Reddit
+# the example contains no secrets and documents the Reddit variables
 !.env.example
 
 # vercel
