@@ -92,8 +92,10 @@ Links to code, models and datasets found in the PDF are checked through the
 public GitHub, Hugging Face and Zenodo APIs. A retraction or a substantive flaw
 tied to a reference in the PDF excludes a paper; missing information or
 documented limitations leave it to review. The client screens two papers per
-request, and an assessment is reused for up to 30 days. A calibration run of
-the current prompt is documented, in Italian, in
+request, and an assessment is reused for up to 30 days. The verdict rules,
+pool sizes, thresholds and cache lifetimes are documented, in Italian, in
+[docs/screening-e-soglie.md](docs/screening-e-soglie.md), and a calibration run
+of the current prompt in
 [docs/paper-screening-calibration.md](docs/paper-screening-calibration.md).
 
 ### Layout
