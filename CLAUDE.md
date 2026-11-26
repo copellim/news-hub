@@ -19,8 +19,13 @@ Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4,
 `fast-xml-parser` per l'RSS di arXiv, Better Auth (Google, stateless),
 `@vercel/blob`, `@anthropic-ai/sdk` (Claude Haiku 5.5), `@mozilla/readability`
 + `linkedom` + `sanitize-html` per la lettura diretta. Package manager: pnpm.
-Verifiche: `pnpm typecheck`, `pnpm lint`, `pnpm test` (vitest, solo i moduli
-puri della lettura diretta, con fixture ridotte da risposte reali).
+Verifiche: `pnpm typecheck`, `pnpm lint`, `pnpm test` (vitest, senza rete:
+ordinamento e filtri di `feed.ts`; fetcher di arXiv e HF, ritmo delle
+richieste arXiv e composizione della corsia Papers; lettura diretta, con
+fixture ridotte da risposte reali; scrematura scientifica (modello, metadati,
+artefatti, cache, `screenPapers`); personalizzazione con Jev; le route
+`/api/papers/screen` e `/api/papers/interest`. Le chiamate esterne sono
+simulate con `vi.mock`).
 
 ## Caching — la regola portante
 
@@ -94,10 +99,13 @@ riscrive il file per intero. Il pull va rifatto quando scade `VERCEL_OIDC_TOKEN`
 - **Papers ha due sole viste: Valutazione scientifica e Più recenti.** La prima
   raggruppa i verdetti, la seconda ordina globalmente per data. I voti sono
   riservati alle News e non devono dare precedenza a HF nei paper.
-- **Papers analizza solo il lotto richiesto in pagina, default 10 per fonte.**
-  Applica data, filtro letti e limite prima di `useScreening`. I verdetti non
-  devono cambiare il lotto o attivare sostituzioni automatiche. Aumentare il
-  limite aggiunge solo chiavi non ancora ricevute per lo stesso feed/categorie.
+- **Papers analizza un pool fisso più ampio della pagina.** In pagina vanno 10
+  paper per fonte di default; `useScreening` riceve, dopo data e filtro letti,
+  fino a `candidateLimit(limite)` = `min(50, max(30, 3 × limite))` candidati
+  per fonte (`src/lib/paper-interest/model.ts`). Gli esclusi liberano posti fra
+  i candidati già nel pool, ma i verdetti non devono cambiare il pool o avviare
+  analisi sostitutive oltre esso. Aumentare il limite aggiunge solo chiavi non
+  ancora ricevute per lo stesso feed/categorie.
 - **Minimo 20 candidati per canale nel pool di metadati, separato dall'analisi.** Ogni fonte
   si recupera indipendentemente. Il pool arXiv ha margine di 100 prima della
   deduplica con HF, poi ciascuna fonte è limitata a 50. I duplicati non devono
@@ -197,11 +205,12 @@ tutte.
 con la forma:
 
 ```jsonc
-{ "version": 2, "paperScreening": true, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
+{ "version": 2, "paperScreening": true, "paperPersonalization": true, "arxivCategories": [...], "bookmarks": [...], "visited": [...] }
 ```
 
-`src/lib/settings.ts` è l'unico posto che parla con `/api/settings`. Espone tre
-viste di dominio (`useBookmarks`, `useVisitedItems`, `useArxivCategories`) più
+`src/lib/settings.ts` è l'unico posto che parla con `/api/settings`. Espone
+cinque viste di dominio (`useBookmarks`, `useVisitedItems`, `useArxivCategories`,
+`usePaperScreening`, `usePaperPersonalization`) più
 `useSettingsStatus` (`loading` / `signedOut` / `ready` / `error`). La versione corrente è 2: `normalizeSettings` migra esplicitamente v1
 conservando i dati e attivando `paperScreening`. Cambi futuri richiedono una nuova
 versione e una migrazione esplicita.
@@ -439,7 +448,7 @@ solo gli Esclusi sono nella sezione espandibile. I lotti alternano HF e arXiv.
 Il prompt metodologico v2 distingue limiti, informazioni mancanti e difetti
 sostanziali (questi ultimi richiedono riferimento e impatto sulla conclusione).
 Le valutazioni v1 restano da valutare fino al riesame, senza riusarle come v2.
-Dettagli delle regole, cache, fonti e limiti nel README, sezione Scrematura scientifica.
+Dettagli delle regole, soglie, pool, cache e fonti in `docs/screening-e-soglie.md`.
 Le recensioni OpenReview possono richiedere una challenge interattiva (403):
 si mantiene il venueid ufficiale quando disponibile, segnalando che le review
 non sono state lette. Non aggirare la challenge e non dedurre rifiuti da errori.
